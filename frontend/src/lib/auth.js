@@ -1,9 +1,22 @@
-export function useAuth() {
-  return {
-    user: null,
-    isAuthenticated: false,
-  };
+import React, { createContext, useContext, useState } from "react";
+
+const AuthContext = createContext(null);
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+
+  const login = (u) => setUser(u);
+  const logout = () => setUser(null);
+
+  return (
+    <AuthContext.Provider value={{ user, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
-export default useAuth;
+export function useAuth() {
+  return useContext(AuthContext);
+}
 
+export default AuthProvider;
