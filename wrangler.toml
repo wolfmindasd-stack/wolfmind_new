@@ -1,0 +1,11 @@
+name = "wolfmind-new"
+compatibility_date = "2024-01-01"
+
+[build]
+command = "npm run build"
+cwd = "frontend"
+watch_dir = "frontend"
+
+[site]
+bucket = "frontend/build"
+entry-point = "frontend"
