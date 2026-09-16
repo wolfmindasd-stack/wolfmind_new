@@ -34,9 +34,10 @@
     "tailwindcss": "3.4.1"
   },
   "scripts": {
-    "start": "craco start",
-   "build": "CI=false npx craco build",
-    "test": "craco test"
+  "start": "craco start",
+  "build": "craco build",
+  "test": "craco test",
+  "eject": "react-scripts eject"
   },
   "forceDeploy": "1",
   "buildTrigger": "1",
