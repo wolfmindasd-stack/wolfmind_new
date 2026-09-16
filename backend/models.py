@@ -47,6 +47,8 @@ class TesseratoBase(BaseModel):
     scadenza_tesseramento: Optional[str] = None
     scadenza_visita_medica: Optional[str] = None
     note: Optional[str] = None
+    tipologia: Optional[str] = None
+    assigned_tecnico_id: Optional[str] = None
 
 
 class TesseratoCreate(TesseratoBase):
@@ -68,6 +70,49 @@ class TesseratoUpdate(BaseModel):
     data_nascita: Optional[str] = None
     scadenza_tesseramento: Optional[str] = None
     scadenza_visita_medica: Optional[str] = None
+    note: Optional[str] = None
+    tipologia: Optional[str] = None
+    assigned_tecnico_id: Optional[str] = None
+
+
+# --- Tipologia Tesserato (configurable) ---
+class TipologiaTesseratoCreate(BaseModel):
+    nome: str
+    attivo: bool = True
+
+
+class TipologiaTesseratoUpdate(BaseModel):
+    nome: Optional[str] = None
+    attivo: Optional[bool] = None
+
+
+# --- Tipologia Percipiente Rimborso (configurable) ---
+class TipologiaRimborsoCreate(BaseModel):
+    nome: str
+    attivo: bool = True
+
+
+class TipologiaRimborsoUpdate(BaseModel):
+    nome: Optional[str] = None
+    attivo: Optional[bool] = None
+
+
+# --- Rimborso Spese ---
+class RimborsoCreate(BaseModel):
+    nome_percipiente: str
+    tipologia: str  # Collaboratore, Volontario, Amministratore, ecc.
+    data: str
+    importo: float
+    descrizione: str = ""
+    note: Optional[str] = None
+
+
+class RimborsoUpdate(BaseModel):
+    nome_percipiente: Optional[str] = None
+    tipologia: Optional[str] = None
+    data: Optional[str] = None
+    importo: Optional[float] = None
+    descrizione: Optional[str] = None
     note: Optional[str] = None
 
 
@@ -172,6 +217,9 @@ class RicevutaUpdate(BaseModel):
 
 
 # --- Movimento ---
+METODO_CASSA_BANCA = Literal["cassa", "banca"]
+
+
 class MovimentoCreate(BaseModel):
     data: str
     tipo: Literal["entrata", "uscita"]
@@ -180,6 +228,7 @@ class MovimentoCreate(BaseModel):
     importo: float
     tecnico_id: Optional[str] = None
     ricevuta_id: Optional[str] = None
+    metodo: METODO_CASSA_BANCA = "cassa"
 
 
 class MovimentoUpdate(BaseModel):
@@ -189,6 +238,14 @@ class MovimentoUpdate(BaseModel):
     descrizione: Optional[str] = None
     importo: Optional[float] = None
     tecnico_id: Optional[str] = None
+    metodo: Optional[METODO_CASSA_BANCA] = None
+
+
+class GirocontoCreate(BaseModel):
+    data: str
+    importo: float
+    descrizione: Optional[str] = "Versamento cassa → banca"
+    direzione: Literal["cassa_a_banca", "banca_a_cassa"] = "cassa_a_banca"
 
 
 # --- Organizzazione ---
@@ -253,7 +310,7 @@ class ErogaCompenso(BaseModel):
 
 # --- Verbali ---
 class VerbaleCreate(BaseModel):
-    tipo: Literal["assemblea", "direttivo", "altro"] = "assemblea"
+    tipo: Literal["assemblea", "assemblea_straordinaria", "direttivo", "altro"] = "assemblea"
     data: str
     oggetto: str
     contenuto: str = ""
@@ -270,7 +327,7 @@ class VerbaleCreate(BaseModel):
 
 
 class VerbaleUpdate(BaseModel):
-    tipo: Optional[Literal["assemblea", "direttivo", "altro"]] = None
+    tipo: Optional[Literal["assemblea", "assemblea_straordinaria", "direttivo", "altro"]] = None
     data: Optional[str] = None
     oggetto: Optional[str] = None
     contenuto: Optional[str] = None

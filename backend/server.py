@@ -22,14 +22,19 @@ from models import (UserCreate, UserLogin, UserUpdate, TesseratoCreate, Tesserat
                      TipoPacchettoCreate, TipoPacchettoUpdate, AbbonamentoCreate,
                      AbbonamentoUpdate,
                      LezioneCreate, RicevutaCreate, RicevutaUpdate, MovimentoCreate,
-                     MovimentoUpdate, OrganizzazioneUpdate, SendReceiptEmail,
+                     MovimentoUpdate, GirocontoCreate, OrganizzazioneUpdate,
+                     SendReceiptEmail,
                      SlotCreate, SlotUpdate, PrenotazioneCreate, ErogaCompenso,
-                     VerbaleCreate, VerbaleUpdate, SetCounter, PortalePrenota, now_iso)
+                     VerbaleCreate, VerbaleUpdate, SetCounter, PortalePrenota,
+                     TipologiaTesseratoCreate, TipologiaTesseratoUpdate,
+                     TipologiaRimborsoCreate, TipologiaRimborsoUpdate,
+                     RimborsoCreate, RimborsoUpdate, now_iso)
 from auth_utils import (hash_password, verify_password, create_access_token,
                          create_refresh_token, set_auth_cookies, clear_auth_cookies,
                          get_current_user_from_db, require_admin)
 from pdf_utils import (generate_receipt_pdf, generate_balance_report_pdf,
-                        generate_libro_soci_pdf, generate_verbale_pdf, generate_compenso_pdf)
+                        generate_libro_soci_pdf, generate_verbale_pdf, generate_compenso_pdf,
+                        generate_rimborso_pdf, generate_rendiconto_pdf)
 from email_utils import send_email_with_attachment
 from excel_utils import generate_backup_xlsx
 
@@ -172,7 +177,16 @@ async def delete_user(uid: str, user=Depends(current_user)):
 async def list_tesserati(user=Depends(current_user)):
     q = {}
     if user["role"] != "admin":
-        q["created_by"] = user["id"]
+        # Tecnico vede: tesserati assegnati a lui, oppure creati da lui e non riassegnati
+        q["$or"] = [
+            {"assigned_tecnico_id": user["id"]},
+            {"$and": [
+                {"created_by": user["id"]},
+                {"$or": [{"assigned_tecnico_id": {"$exists": False}},
+                          {"assigned_tecnico_id": None},
+                          {"assigned_tecnico_id": ""}]},
+            ]},
+        ]
     docs = await db.tesserati.find(q).sort("cognome", 1).to_list(2000)
     return [serialize(d) for d in docs]
 
@@ -180,6 +194,9 @@ async def list_tesserati(user=Depends(current_user)):
 @api.post("/tesserati")
 async def create_tesserato(payload: TesseratoCreate, user=Depends(current_user)):
     doc = payload.model_dump()
+    # Tecnico non può assegnare ad altri: forza a se stesso
+    if user["role"] != "admin":
+        doc["assigned_tecnico_id"] = user["id"]
     doc["created_at"] = now_iso()
     doc["created_by"] = user["id"]
     doc["portale_token"] = secrets.token_urlsafe(24)
@@ -201,11 +218,191 @@ async def update_tesserato(tid: str, payload: TesseratoUpdate, user=Depends(curr
     upd = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
     if not upd:
         raise HTTPException(status_code=400, detail="Nessun dato da aggiornare")
+    # Solo admin può cambiare assegnazione
+    if "assigned_tecnico_id" in upd and user["role"] != "admin":
+        raise HTTPException(status_code=403,
+                             detail="Solo l'amministratore può riassegnare i tesserati")
     res = await db.tesserati.update_one({"_id": oid(tid)}, {"$set": upd})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Tesserato non trovato")
     doc = await db.tesserati.find_one({"_id": oid(tid)})
     return serialize(doc)
+
+
+# --- Tipologie tesserato (configurabili da admin) ---
+@api.get("/tipologie-tesserato")
+async def list_tipologie(user=Depends(current_user)):
+    docs = await db.tipologie_tesserato.find({}).sort("nome", 1).to_list(200)
+    return [serialize(d) for d in docs]
+
+
+@api.post("/tipologie-tesserato")
+async def create_tipologia(payload: TipologiaTesseratoCreate, user=Depends(current_user)):
+    require_admin(user)
+    doc = payload.model_dump()
+    doc["created_at"] = now_iso()
+    res = await db.tipologie_tesserato.insert_one(doc)
+    doc["_id"] = res.inserted_id
+    return serialize(doc)
+
+
+@api.patch("/tipologie-tesserato/{tid}")
+async def update_tipologia(tid: str, payload: TipologiaTesseratoUpdate,
+                             user=Depends(current_user)):
+    require_admin(user)
+    upd = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
+    if not upd:
+        raise HTTPException(status_code=400, detail="Nessun dato da aggiornare")
+    res = await db.tipologie_tesserato.update_one({"_id": oid(tid)}, {"$set": upd})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Tipologia non trovata")
+    doc = await db.tipologie_tesserato.find_one({"_id": oid(tid)})
+    return serialize(doc)
+
+
+@api.delete("/tipologie-tesserato/{tid}")
+async def delete_tipologia(tid: str, user=Depends(current_user)):
+    require_admin(user)
+    res = await db.tipologie_tesserato.delete_one({"_id": oid(tid)})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Tipologia non trovata")
+    return {"ok": True}
+
+
+# ============================================================
+# TIPOLOGIE RIMBORSO (percipienti: Collaboratore, Volontario, ...)
+# ============================================================
+@api.get("/tipologie-rimborso")
+async def list_tipologie_rimborso(user=Depends(current_user)):
+    docs = await db.tipologie_rimborso.find({}).sort("nome", 1).to_list(200)
+    return [serialize(d) for d in docs]
+
+
+@api.post("/tipologie-rimborso")
+async def create_tipologia_rimborso(payload: TipologiaRimborsoCreate,
+                                      user=Depends(current_user)):
+    require_admin(user)
+    doc = payload.model_dump()
+    doc["created_at"] = now_iso()
+    res = await db.tipologie_rimborso.insert_one(doc)
+    doc["_id"] = res.inserted_id
+    return serialize(doc)
+
+
+@api.patch("/tipologie-rimborso/{tid}")
+async def update_tipologia_rimborso(tid: str, payload: TipologiaRimborsoUpdate,
+                                      user=Depends(current_user)):
+    require_admin(user)
+    upd = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
+    if not upd:
+        raise HTTPException(status_code=400, detail="Nessun dato da aggiornare")
+    res = await db.tipologie_rimborso.update_one({"_id": oid(tid)}, {"$set": upd})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Tipologia non trovata")
+    doc = await db.tipologie_rimborso.find_one({"_id": oid(tid)})
+    return serialize(doc)
+
+
+@api.delete("/tipologie-rimborso/{tid}")
+async def delete_tipologia_rimborso(tid: str, user=Depends(current_user)):
+    require_admin(user)
+    res = await db.tipologie_rimborso.delete_one({"_id": oid(tid)})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Tipologia non trovata")
+    return {"ok": True}
+
+
+# ============================================================
+# RIMBORSI SPESE (collaboratori, volontari, amministratori, ...)
+# ============================================================
+@api.get("/rimborsi")
+async def list_rimborsi(user=Depends(current_user)):
+    q = {} if user["role"] == "admin" else {"created_by": user["id"]}
+    docs = await db.rimborsi.find(q).sort("data", -1).to_list(1000)
+    return [serialize(d) for d in docs]
+
+
+@api.post("/rimborsi")
+async def create_rimborso(payload: RimborsoCreate, user=Depends(current_user)):
+    require_admin(user)
+    if payload.importo <= 0:
+        raise HTTPException(status_code=422, detail="L'importo deve essere maggiore di zero")
+    desc = f"Rimborso spese {payload.tipologia} · {payload.nome_percipiente}"
+    if payload.descrizione:
+        desc += f" — {payload.descrizione}"
+    # Crea movimento uscita
+    mv = {"data": payload.data, "tipo": "uscita",
+          "categoria": "Rimborso spese", "descrizione": desc,
+          "importo": float(payload.importo),
+          "metodo": "banca",
+          "note": payload.note or "",
+          "created_at": now_iso(), "created_by": user["id"]}
+    res_mv = await db.movimenti.insert_one(mv)
+    doc = payload.model_dump()
+    doc["movimento_id"] = str(res_mv.inserted_id)
+    doc["created_at"] = now_iso()
+    doc["created_by"] = user["id"]
+    res = await db.rimborsi.insert_one(doc)
+    doc["_id"] = res.inserted_id
+    return serialize(doc)
+
+
+@api.patch("/rimborsi/{rid}")
+async def update_rimborso(rid: str, payload: RimborsoUpdate,
+                            user=Depends(current_user)):
+    require_admin(user)
+    doc = await db.rimborsi.find_one({"_id": oid(rid)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Rimborso non trovato")
+    upd = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
+    if not upd:
+        raise HTTPException(status_code=400, detail="Nessun dato da aggiornare")
+    if "importo" in upd and float(upd["importo"]) <= 0:
+        raise HTTPException(status_code=422, detail="Importo non valido")
+    await db.rimborsi.update_one({"_id": oid(rid)}, {"$set": upd})
+    doc2 = await db.rimborsi.find_one({"_id": oid(rid)})
+    # Sincronizza movimento collegato
+    mv_id = doc2.get("movimento_id")
+    if mv_id:
+        desc = f"Rimborso spese {doc2.get('tipologia','')} · {doc2.get('nome_percipiente','')}"
+        if doc2.get("descrizione"):
+            desc += f" — {doc2['descrizione']}"
+        await db.movimenti.update_one(
+            {"_id": oid(mv_id)},
+            {"$set": {"data": doc2["data"],
+                       "categoria": "Rimborso spese",
+                       "descrizione": desc,
+                       "importo": float(doc2["importo"]),
+                       "note": doc2.get("note") or ""}})
+    return serialize(doc2)
+
+
+@api.delete("/rimborsi/{rid}")
+async def delete_rimborso(rid: str, user=Depends(current_user)):
+    require_admin(user)
+    doc = await db.rimborsi.find_one({"_id": oid(rid)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Rimborso non trovato")
+    if doc.get("movimento_id"):
+        try:
+            await db.movimenti.delete_one({"_id": oid(doc["movimento_id"])})
+        except Exception:
+            pass
+    await db.rimborsi.delete_one({"_id": oid(rid)})
+    return {"ok": True}
+
+
+@api.get("/rimborsi/{rid}/pdf")
+async def rimborso_pdf(rid: str, user=Depends(current_user)):
+    doc = await db.rimborsi.find_one({"_id": oid(rid)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Rimborso non trovato")
+    org = await _load_org()
+    pdf_bytes = generate_rimborso_pdf(org, serialize(doc))
+    from fastapi.responses import Response
+    return Response(pdf_bytes, media_type="application/pdf",
+                     headers={"Content-Disposition":
+                              f"inline; filename=Rimborso_{doc.get('nome_percipiente','x').replace(' ','_')}_{doc.get('data','')[:10]}.pdf"})
 
 
 @api.delete("/tesserati/{tid}")
@@ -403,6 +600,7 @@ async def _create_movimenti_for_abbonamento(ab: dict, user: dict) -> list:
                 "descrizione": f"Abbonamento {ab.get('descrizione','')} - {tess_nm}".strip(" -"),
                 "importo": importo, "tecnico_id": ab.get("created_by"),
                 "abbonamento_id": str(ab["_id"]), "ricevuta_id": None,
+                "metodo": "cassa",
                 "created_at": now_iso(), "created_by": user["id"]})
             created_ids.append(str(res.inserted_id))
         return created_ids
@@ -417,6 +615,7 @@ async def _create_movimenti_for_abbonamento(ab: dict, user: dict) -> list:
             "descrizione": f"{it.get('descrizione','')} - {tess_nm}".strip(" -"),
             "importo": importo, "tecnico_id": ab.get("created_by"),
             "abbonamento_id": str(ab["_id"]), "ricevuta_id": None,
+            "metodo": "cassa",
             "created_at": now_iso(), "created_by": user["id"]})
         created_ids.append(str(res.inserted_id))
     return created_ids
@@ -550,6 +749,7 @@ async def create_abbonamento(payload: AbbonamentoCreate, user=Depends(current_us
                 "tecnico_id": ric.get("emesso_per_id"),
                 "ricevuta_id": ricevuta_id,
                 "abbonamento_id": aid,
+                "metodo": "cassa",
                 "created_at": now_iso(), "created_by": user["id"]})
         else:
             # Se ricevuta non creata (tesserato mancante), crea movimenti separati
@@ -603,6 +803,7 @@ async def genera_ricevuta_per_abbonamento(aid: str, user=Depends(current_user)):
         "importo": ric["totale"],
         "tecnico_id": ric.get("emesso_per_id"),
         "ricevuta_id": rid, "abbonamento_id": aid,
+        "metodo": "cassa",
         "created_at": now_iso(), "created_by": user["id"]})
     return {"ok": True, "ricevuta_id": rid, "numero": ric.get("numero")}
 
@@ -832,6 +1033,7 @@ async def create_ricevuta(payload: RicevutaCreate, user=Depends(current_user)):
         "data": payload.data, "tipo": "entrata", "categoria": "Ricevuta",
         "descrizione": f"Ricevuta N.{numero} - {tesserato['cognome']} {tesserato['nome']}",
         "importo": totale, "tecnico_id": emesso_per_id, "ricevuta_id": rid,
+        "metodo": "cassa",
         "created_at": now_iso(), "created_by": user["id"]})
     return serialize(doc)
 
@@ -1269,7 +1471,7 @@ async def eroga_compenso(payload: ErogaCompenso, user=Depends(current_user)):
           "categoria": "Compenso tecnico", "descrizione": desc,
           "importo": float(payload.importo),
           "tecnico_id": payload.tecnico_id,
-          "metodo_pagamento": payload.metodo,
+          "metodo": "banca",
           "note": payload.note or "",
           "created_at": now_iso(), "created_by": user["id"]}
     res = await db.movimenti.insert_one(mv)
@@ -1322,7 +1524,6 @@ async def update_compenso_erogato(cid: str, payload: ErogaCompenso,
             {"$set": {"data": payload.data, "categoria": "Compenso tecnico",
                        "descrizione": desc, "importo": float(payload.importo),
                        "tecnico_id": payload.tecnico_id,
-                       "metodo_pagamento": payload.metodo,
                        "note": payload.note or ""}})
     doc2 = await db.compensi_erogati.find_one({"_id": oid(cid)})
     return serialize(doc2)
@@ -1383,7 +1584,7 @@ async def export_excel(user=Depends(current_user)):
 # ============================================================
 @api.get("/movimenti")
 async def list_movimenti(date_from: Optional[str] = None, date_to: Optional[str] = None,
-                          user=Depends(current_user)):
+                          metodo: Optional[str] = None, user=Depends(current_user)):
     q = {}
     if user["role"] != "admin":
         q["tecnico_id"] = user["id"]
@@ -1391,6 +1592,8 @@ async def list_movimenti(date_from: Optional[str] = None, date_to: Optional[str]
         q["data"] = {}
         if date_from: q["data"]["$gte"] = date_from
         if date_to: q["data"]["$lte"] = date_to + "T23:59:59"
+    if metodo in ("cassa", "banca"):
+        q["metodo"] = metodo
     docs = await db.movimenti.find(q).sort("data", -1).to_list(3000)
     return [serialize(d) for d in docs]
 
@@ -1403,6 +1606,40 @@ async def create_movimento(payload: MovimentoCreate, user=Depends(current_user))
     res = await db.movimenti.insert_one(doc)
     doc["_id"] = res.inserted_id
     return serialize(doc)
+
+
+@api.post("/movimenti/giroconto")
+async def create_giroconto(payload: GirocontoCreate, user=Depends(current_user)):
+    """Giroconto Cassa ↔ Banca. Crea 2 movimenti collegati (uscita + entrata)
+    con la stessa categoria 'Giroconto' e un identificatore comune `giroconto_id`.
+    Non ha impatto sul risultato economico (entrate−uscite).
+    """
+    require_admin(user)
+    if payload.importo <= 0:
+        raise HTTPException(status_code=422, detail="Importo non valido")
+    from_metodo = "cassa" if payload.direzione == "cassa_a_banca" else "banca"
+    to_metodo = "banca" if payload.direzione == "cassa_a_banca" else "cassa"
+    desc = payload.descrizione or (
+        "Versamento cassa → banca" if payload.direzione == "cassa_a_banca"
+        else "Prelievo banca → cassa")
+    giroconto_id = str(ObjectId())
+    now = now_iso()
+    out_doc = {"data": payload.data, "tipo": "uscita", "categoria": "Giroconto",
+               "descrizione": desc, "importo": float(payload.importo),
+               "metodo": from_metodo, "is_giroconto": True,
+               "giroconto_id": giroconto_id,
+               "created_at": now, "created_by": user["id"]}
+    in_doc = {"data": payload.data, "tipo": "entrata", "categoria": "Giroconto",
+              "descrizione": desc, "importo": float(payload.importo),
+              "metodo": to_metodo, "is_giroconto": True,
+              "giroconto_id": giroconto_id,
+              "created_at": now, "created_by": user["id"]}
+    r1 = await db.movimenti.insert_one(out_doc)
+    r2 = await db.movimenti.insert_one(in_doc)
+    out_doc["_id"] = r1.inserted_id
+    in_doc["_id"] = r2.inserted_id
+    return {"giroconto_id": giroconto_id,
+            "uscita": serialize(out_doc), "entrata": serialize(in_doc)}
 
 
 @api.patch("/movimenti/{mid}")
@@ -1419,10 +1656,147 @@ async def update_movimento(mid: str, payload: MovimentoUpdate, user=Depends(curr
 @api.delete("/movimenti/{mid}")
 async def delete_movimento(mid: str, user=Depends(current_user)):
     require_admin(user)
+    # Se è un giroconto, elimina anche la controparte
+    doc = await db.movimenti.find_one({"_id": oid(mid)})
+    if doc and doc.get("giroconto_id"):
+        await db.movimenti.delete_many({"giroconto_id": doc["giroconto_id"]})
+        return {"ok": True, "giroconto": True}
     res = await db.movimenti.delete_one({"_id": oid(mid)})
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Movimento non trovato")
     return {"ok": True}
+
+
+@api.get("/movimenti/saldi")
+async def saldi_cassa_banca(user=Depends(current_user)):
+    """Ritorna saldi correnti per Cassa e Banca (tutte le operazioni fino ad oggi)."""
+    q = {}
+    if user["role"] != "admin":
+        q["tecnico_id"] = user["id"]
+    movs = await db.movimenti.find(q).to_list(20000)
+    saldi = {"cassa": 0.0, "banca": 0.0}
+    entrate_cassa = uscite_cassa = 0.0
+    entrate_banca = uscite_banca = 0.0
+    for m in movs:
+        metodo = (m.get("metodo") or "cassa").lower()
+        if metodo not in ("cassa", "banca"):
+            metodo = "cassa"
+        importo = float(m.get("importo", 0))
+        if m.get("tipo") == "entrata":
+            saldi[metodo] += importo
+            if metodo == "cassa": entrate_cassa += importo
+            else: entrate_banca += importo
+        else:
+            saldi[metodo] -= importo
+            if metodo == "cassa": uscite_cassa += importo
+            else: uscite_banca += importo
+    return {
+        "cassa": round(saldi["cassa"], 2),
+        "banca": round(saldi["banca"], 2),
+        "totale": round(saldi["cassa"] + saldi["banca"], 2),
+        "dettaglio": {
+            "cassa": {"entrate": round(entrate_cassa, 2), "uscite": round(uscite_cassa, 2)},
+            "banca": {"entrate": round(entrate_banca, 2), "uscite": round(uscite_banca, 2)},
+        },
+    }
+
+
+@api.get("/movimenti/rendiconto")
+async def rendiconto_gestionale(year: int, user=Depends(current_user)):
+    """
+    Rendiconto Gestionale annuo aggregato per sezione (ASD).
+    - I Giroconti sono esposti separatamente e NON impattano il risultato.
+    - Entrate divise in istituzionali / commerciali.
+    - Uscite divise in personale (compensi) / rimborsi / altre uscite.
+    """
+    return await _compute_rendiconto(year, user)
+
+
+async def _compute_rendiconto(year: int, user):
+    q = {"data": {"$gte": f"{year}-01-01", "$lte": f"{year}-12-31T23:59:59"}}
+    if user["role"] != "admin":
+        q["tecnico_id"] = user["id"]
+    movs = await db.movimenti.find(q).to_list(20000)
+
+    ISTITUZIONALI = {"Quota associativa", "Tesseramento", "Quota tessera"}
+    PERSONALE = {"Compenso tecnico", "Compensi tecnici"}
+    RIMBORSI = {"Rimborso spese", "Rimborsi"}
+
+    sez = {
+        "entrate_istituzionali": {"totale": 0.0, "voci": {}},
+        "entrate_commerciali": {"totale": 0.0, "voci": {}},
+        "uscite_personale": {"totale": 0.0, "voci": {}},
+        "uscite_rimborsi": {"totale": 0.0, "voci": {}},
+        "uscite_altre": {"totale": 0.0, "voci": {}},
+        "giroconti": {"totale": 0.0, "count": 0},
+    }
+    for m in movs:
+        cat = m.get("categoria") or "Altro"
+        imp = float(m.get("importo", 0))
+        if m.get("is_giroconto") or cat == "Giroconto":
+            # Contiamo solo una volta i giroconti (uscita)
+            if m.get("tipo") == "uscita":
+                sez["giroconti"]["totale"] += imp
+                sez["giroconti"]["count"] += 1
+            continue
+        if m.get("tipo") == "entrata":
+            key = "entrate_istituzionali" if cat in ISTITUZIONALI else "entrate_commerciali"
+        else:
+            if cat in PERSONALE:
+                key = "uscite_personale"
+            elif cat in RIMBORSI:
+                key = "uscite_rimborsi"
+            else:
+                key = "uscite_altre"
+        sez[key]["totale"] += imp
+        sez[key]["voci"][cat] = sez[key]["voci"].get(cat, 0) + imp
+
+    tot_entrate = sez["entrate_istituzionali"]["totale"] + sez["entrate_commerciali"]["totale"]
+    tot_uscite = (sez["uscite_personale"]["totale"] + sez["uscite_rimborsi"]["totale"]
+                  + sez["uscite_altre"]["totale"])
+    risultato = tot_entrate - tot_uscite
+
+    # arrotonda
+    def r(x): return round(float(x), 2)
+    for k in ("entrate_istituzionali", "entrate_commerciali", "uscite_personale",
+              "uscite_rimborsi", "uscite_altre"):
+        sez[k]["totale"] = r(sez[k]["totale"])
+        sez[k]["voci"] = {kk: r(vv) for kk, vv in sez[k]["voci"].items()}
+    sez["giroconti"]["totale"] = r(sez["giroconti"]["totale"])
+    return {"year": year, "sezioni": sez,
+            "totali": {"entrate": r(tot_entrate), "uscite": r(tot_uscite),
+                        "risultato": r(risultato)}}
+
+
+@api.get("/movimenti/rendiconto/pdf")
+async def rendiconto_gestionale_pdf(year: int, user=Depends(current_user)):
+    """PDF ufficiale del Rendiconto Gestionale annuale — pronto per Consiglio Direttivo.
+    Include:
+    - 5 sezioni (proventi/oneri) con confronto anno precedente
+    - Riepilogo con Avanzo/Disavanzo di gestione
+    - Saldi Cassa / Banca a fine esercizio
+    - Elenco cronologico di tutti i movimenti dell'esercizio
+    - Firme Presidente + Segretario
+    """
+    require_admin(user)
+    rendiconto = await _compute_rendiconto(year, user)
+    rendiconto_prev = await _compute_rendiconto(year - 1, user)
+
+    # dettaglio movimenti (esclusi giroconti — evidenziati separatamente)
+    q = {"data": {"$gte": f"{year}-01-01", "$lte": f"{year}-12-31T23:59:59"}}
+    movs = await db.movimenti.find(q).sort("data", 1).to_list(20000)
+    movs_ser = [serialize(m) for m in movs]
+
+    # saldi correnti (a oggi — riflettono la posizione a fine esercizio se anno < corrente)
+    saldi = await saldi_cassa_banca(user)
+
+    org = await _load_org()
+    pdf_bytes = generate_rendiconto_pdf(org, year, rendiconto, rendiconto_prev,
+                                         movs_ser, saldi)
+    filename = f"Rendiconto_Gestionale_{year}.pdf"
+    return RawResponse(pdf_bytes, media_type="application/pdf",
+                        headers={"Content-Disposition":
+                                 f'inline; filename="{filename}"'})
 
 
 @api.get("/movimenti/riepilogo-mensile")
@@ -1640,6 +2014,7 @@ async def set_counter(year: int, payload: SetCounter, user=Depends(current_user)
 # ============================================================
 @api.get("/verbali")
 async def list_verbali(user=Depends(current_user)):
+    require_admin(user)
     docs = await db.verbali.find({}).sort("data", -1).to_list(1000)
     # Do not send heavy allegato in list
     result = []
@@ -1665,6 +2040,7 @@ async def create_verbale(payload: VerbaleCreate, user=Depends(current_user)):
 
 @api.get("/verbali/{vid}")
 async def get_verbale(vid: str, user=Depends(current_user)):
+    require_admin(user)
     doc = await db.verbali.find_one({"_id": oid(vid)})
     if not doc: raise HTTPException(status_code=404, detail="Verbale non trovato")
     return serialize(doc)
@@ -1691,6 +2067,7 @@ async def delete_verbale(vid: str, user=Depends(current_user)):
 
 @api.get("/verbali/{vid}/pdf")
 async def verbale_pdf(vid: str, user=Depends(current_user)):
+    require_admin(user)
     doc = await db.verbali.find_one({"_id": oid(vid)})
     if not doc: raise HTTPException(status_code=404, detail="Verbale non trovato")
     org = await _load_org()
@@ -1974,6 +2351,20 @@ async def startup():
             {"nome": "Tesseramento annuale", "descrizione": "Quota associativa annuale",
              "num_lezioni": None, "prezzo_default": 30.0, "attivo": True,
              "esclude_da_compensi": True, "created_at": now_iso()}])
+
+    # Seed default tipologie tesserato
+    if await db.tipologie_tesserato.count_documents({}) == 0:
+        await db.tipologie_tesserato.insert_many([
+            {"nome": "Atleta", "attivo": True, "created_at": now_iso()},
+            {"nome": "Tecnico", "attivo": True, "created_at": now_iso()},
+            {"nome": "Altro", "attivo": True, "created_at": now_iso()}])
+
+    # Seed default tipologie rimborso (percipienti)
+    if await db.tipologie_rimborso.count_documents({}) == 0:
+        await db.tipologie_rimborso.insert_many([
+            {"nome": "Collaboratore", "attivo": True, "created_at": now_iso()},
+            {"nome": "Volontario", "attivo": True, "created_at": now_iso()},
+            {"nome": "Amministratore", "attivo": True, "created_at": now_iso()}])
 
 
 @app.on_event("shutdown")
