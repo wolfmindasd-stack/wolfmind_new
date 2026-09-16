@@ -35,7 +35,7 @@
   },
   "scripts": {
     "start": "craco start",
-    "build": "CI=false npx craco build",
+   "build": "CI=false npx craco build",
     "test": "craco test"
   },
   "forceDeploy": "1",
