@@ -24,17 +24,207 @@ export default function Admin() {
         <TabsList className="bg-[#0F0F13] border border-white/10 flex-wrap h-auto justify-start">
           <TabsTrigger value="utenti" data-testid="tab-utenti">Utenti & Tecnici</TabsTrigger>
           <TabsTrigger value="pacchetti" data-testid="tab-pacchetti">Pacchetti / Listino</TabsTrigger>
+          <TabsTrigger value="tipologie" data-testid="tab-tipologie">Tipologie tesserato</TabsTrigger>
+          <TabsTrigger value="rimborsi" data-testid="tab-tipologie-rimborso">Tipologie rimborso</TabsTrigger>
           <TabsTrigger value="numerazione" data-testid="tab-numerazione">Numerazione ricevute</TabsTrigger>
           <TabsTrigger value="org" data-testid="tab-org">Dati Organizzazione</TabsTrigger>
         </TabsList>
         <TabsContent value="utenti" className="mt-4"><UtentiTab /></TabsContent>
         <TabsContent value="pacchetti" className="mt-4"><PacchettiTab /></TabsContent>
+        <TabsContent value="tipologie" className="mt-4"><TipologieTab /></TabsContent>
+        <TabsContent value="rimborsi" className="mt-4"><TipologieRimborsoTab /></TabsContent>
         <TabsContent value="numerazione" className="mt-4"><NumerazioneTab /></TabsContent>
         <TabsContent value="org" className="mt-4"><OrgTab /></TabsContent>
       </Tabs>
     </div>
   );
 }
+
+function TipologieTab() {
+  const [list, setList] = useState([]);
+  const [nuovoNome, setNuovoNome] = useState("");
+
+  const load = async () => {
+    const { data } = await api.get("/tipologie-tesserato");
+    setList(data);
+  };
+  useEffect(() => { load(); }, []);
+
+  const add = async () => {
+    if (!nuovoNome.trim()) return;
+    try {
+      await api.post("/tipologie-tesserato",
+        { nome: nuovoNome.trim(), attivo: true });
+      setNuovoNome(""); toast.success("Tipologia aggiunta"); load();
+    } catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail)); }
+  };
+  const toggle = async (t) => {
+    try { await api.patch(`/tipologie-tesserato/${t.id}`, { attivo: !t.attivo }); load(); }
+    catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail)); }
+  };
+  const rename = async (t) => {
+    const nome = window.prompt("Nuovo nome tipologia:", t.nome);
+    if (!nome || nome.trim() === t.nome) return;
+    try { await api.patch(`/tipologie-tesserato/${t.id}`, { nome: nome.trim() });
+          toast.success("Rinominata"); load(); }
+    catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail)); }
+  };
+  const del = async (t) => {
+    if (!window.confirm(`Eliminare la tipologia "${t.nome}"?`)) return;
+    try { await api.delete(`/tipologie-tesserato/${t.id}`);
+          toast.success("Eliminata"); load(); }
+    catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail)); }
+  };
+
+  return (
+    <div className="space-y-4 max-w-xl">
+      <div className="text-sm text-white/70">
+        Categorie disponibili nel menu "Tipologia" del form Tesserato (Atleta, Tecnico, Altro…).
+        Aggiungi, rinomina o disattiva le voci in base alle esigenze dell'associazione.
+      </div>
+      <div className="flex gap-2">
+        <Input value={nuovoNome} onChange={(e) => setNuovoNome(e.target.value)}
+          placeholder="Nome tipologia (es. Genitore, Collaboratore…)"
+          data-testid="tipologia-nuovo-nome"
+          className="bg-black/40 border-white/10" />
+        <Button onClick={add} className="bg-[#007AFF] hover:bg-[#005BB5]"
+          data-testid="add-tipologia-btn">
+          <Plus size={16} className="mr-1" /> Aggiungi
+        </Button>
+      </div>
+      <div className="wm-card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-white/[0.02] border-b border-white/10">
+            <tr className="text-left">
+              <th className="p-3 wm-label">Nome</th>
+              <th className="p-3 wm-label text-center">Attivo</th>
+              <th className="p-3 wm-label text-right">Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((t) => (
+              <tr key={t.id} className="border-b border-white/5"
+                data-testid={`tipologia-row-${t.id}`}>
+                <td className="p-3 font-medium">{t.nome}</td>
+                <td className="p-3 text-center">
+                  <Switch checked={t.attivo !== false}
+                    onCheckedChange={() => toggle(t)}
+                    data-testid={`tipologia-toggle-${t.id}`} />
+                </td>
+                <td className="p-3 text-right">
+                  <Button size="sm" variant="ghost" onClick={() => rename(t)}
+                    data-testid={`tipologia-edit-${t.id}`}>
+                    <Pencil size={14} />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => del(t)}
+                    className="text-[#FF3B30]" data-testid={`tipologia-del-${t.id}`}>
+                    <Trash2 size={14} />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+            {list.length === 0 && (
+              <tr><td colSpan={3} className="p-6 text-center text-white/40">Nessuna tipologia definita</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+
+function TipologieRimborsoTab() {
+  const [list, setList] = useState([]);
+  const [nuovoNome, setNuovoNome] = useState("");
+
+  const load = async () => {
+    const { data } = await api.get("/tipologie-rimborso");
+    setList(data);
+  };
+  useEffect(() => { load(); }, []);
+
+  const add = async () => {
+    if (!nuovoNome.trim()) return;
+    try {
+      await api.post("/tipologie-rimborso",
+        { nome: nuovoNome.trim(), attivo: true });
+      setNuovoNome(""); toast.success("Tipologia aggiunta"); load();
+    } catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail)); }
+  };
+  const toggle = async (t) => {
+    try { await api.patch(`/tipologie-rimborso/${t.id}`, { attivo: !t.attivo }); load(); }
+    catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail)); }
+  };
+  const rename = async (t) => {
+    const nome = window.prompt("Nuovo nome tipologia:", t.nome);
+    if (!nome || nome.trim() === t.nome) return;
+    try { await api.patch(`/tipologie-rimborso/${t.id}`, { nome: nome.trim() });
+          toast.success("Rinominata"); load(); }
+    catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail)); }
+  };
+  const del = async (t) => {
+    if (!window.confirm(`Eliminare la tipologia "${t.nome}"?`)) return;
+    try { await api.delete(`/tipologie-rimborso/${t.id}`);
+          toast.success("Eliminata"); load(); }
+    catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail)); }
+  };
+
+  return (
+    <div className="space-y-4 max-w-xl">
+      <div className="text-sm text-white/70">
+        Qualifiche disponibili nel modulo "Rimborso spese" (Collaboratore, Volontario, Amministratore…).
+        Aggiungi, rinomina o disattiva le voci.
+      </div>
+      <div className="flex gap-2">
+        <Input value={nuovoNome} onChange={(e) => setNuovoNome(e.target.value)}
+          placeholder="Nome tipologia (es. Consigliere, Genitore…)"
+          data-testid="rimb-tipologia-nuovo-nome"
+          className="bg-black/40 border-white/10" />
+        <Button onClick={add} className="bg-[#FF9F0A] hover:bg-[#e08c00] text-black font-semibold"
+          data-testid="add-rimb-tipologia-btn">
+          <Plus size={16} className="mr-1" /> Aggiungi
+        </Button>
+      </div>
+      <div className="wm-card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-white/[0.02] border-b border-white/10">
+            <tr className="text-left">
+              <th className="p-3 wm-label">Nome</th>
+              <th className="p-3 wm-label text-center">Attivo</th>
+              <th className="p-3 wm-label text-right">Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((t) => (
+              <tr key={t.id} className="border-b border-white/5"
+                data-testid={`rimb-tipologia-row-${t.id}`}>
+                <td className="p-3 font-medium">{t.nome}</td>
+                <td className="p-3 text-center">
+                  <Switch checked={t.attivo !== false}
+                    onCheckedChange={() => toggle(t)} />
+                </td>
+                <td className="p-3 text-right">
+                  <Button size="sm" variant="ghost" onClick={() => rename(t)}>
+                    <Pencil size={14} />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => del(t)}
+                    className="text-[#FF3B30]">
+                    <Trash2 size={14} />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+            {list.length === 0 && (
+              <tr><td colSpan={3} className="p-6 text-center text-white/40">Nessuna tipologia</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 
 function NumerazioneTab() {
   const [year, setYear] = useState(new Date().getFullYear());

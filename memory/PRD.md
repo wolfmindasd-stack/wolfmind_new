@@ -47,8 +47,46 @@ FastAPI + MongoDB + React 19 + Tailwind + Shadcn + reportlab (PDF) + Resend (ema
   - DELETE /compensi/erogati/{cid} rimuove anche il movimento (annullamento)
   - Frontend: icone matita/cestino nella tabella storico erogazioni (solo admin)
   - Dialog "Modifica compenso erogato" riusa il form dell'erogazione con etichette dinamiche
+- **Tesserati: tipologia + assegnazione tecnico (2026-02)**:
+  - Campi nuovi: `tipologia` (Atleta/Tecnico/Altro configurabili) e `assigned_tecnico_id`
+  - Solo admin può assegnare/riassegnare un tesserato a un tecnico (tecnico riceve 403)
+  - Filtro list_tesserati per tecnici: vede solo tesserati assegnati a lui o creati da lui senza riassegnazione
+  - Nuovo tab **Admin > Tipologie tesserato**: CRUD completo (aggiungi, rinomina, disattiva, elimina); seed automatico Atleta/Tecnico/Altro
+  - Nel form Tesserato: dropdown "Tipologia" (da /tipologie-tesserato attive) + "Tecnico assegnato" (solo admin)
+  - Nella tabella Tesserati: badge tipologia colorato + colonna "Tecnico" (solo admin)
+- **Rimborsi spese (2026-02)**:
+  - Nuova sezione in Compensi (tab "Rimborsi spese" affiancato a "Compensi tecnici")
+  - Endpoint CRUD `/api/rimborsi` (solo admin) — crea automaticamente movimento contabile Uscita · "Rimborso spese"
+  - Endpoint `/api/rimborsi/{id}/pdf` genera "**MODULO PER RIMBORSO SPESE**" con dati percipiente, qualifica, descrizione, importo, firme
+  - Tipologie percipienti configurabili in **Admin > Tipologie rimborso** (seed: Collaboratore, Volontario, Amministratore)
+  - Form: Nome percipiente, Tipologia, Data, Importo, Descrizione, Note
+- **PDF Busta Paga tecnici semplificato (2026-02)**:
+  - Rimossi campi "Metodo" e "% sul flusso" dal PDF e dal form
+  - Aggiunto box **DESCRIZIONE** dedicato (riga descrittiva libera compilabile)
+  - Colonna "Metodo" rimossa dalla tabella storico erogazioni, sostituita con "Descrizione"
+- **Cash Flow & Libro Cassa (2026-02)**:
+  - Nuovo campo `metodo` (Cassa/Banca) su tutti i movimenti; assegnato di default: Cassa per ricevute/abbonamenti, Banca per compensi/rimborsi
+  - Endpoint `/api/movimenti/saldi` (saldi correnti Cassa/Banca separati)
+  - Endpoint `/api/movimenti/giroconto` (POST) crea 2 movimenti collegati (uscita+entrata) con `giroconto_id` comune; direzione cassa↔banca
+  - DELETE movimento giroconto rimuove entrambe le controparti
+  - Endpoint `/api/movimenti/rendiconto?year=YYYY` aggrega per sezioni normativa ASD (Istituzionali/Commerciali/Personale/Rimborsi/Altre)
+  - Frontend: 3 card saldi (Cassa/Banca/Totale), tab **Prima Nota** con colonna Metodo (badge verde/blu), tab **Rendiconto Gestionale** con 5 sezioni + card Risultato + info giroconti
+  - Dialog "Giroconto Cassa ↔ Banca" con spiegazione contabile + 2 direzioni
+- **Verbali admin-only (2026-02)**:
+  - Sidebar: link Verbali visibile solo all'admin (`adminOnly: true`)
+  - Backend: tutti gli endpoint `/api/verbali/*` richiedono `require_admin`
+  - Nuovo tipo "**Assemblea Straordinaria dei Soci**" nel dropdown; titolo PDF differenziato
+- **Report PDF Rendiconto Gestionale annuale (2026-02)**:
+  - Nuovo endpoint `GET /api/movimenti/rendiconto/pdf?year=YYYY` (admin-only)
+  - PDF ufficiale pronto per Consiglio Direttivo con: intestazione ASD + logo, preambolo normativo, Riepilogo Esecutivo con confronto anno precedente e Δ%, banner Avanzo/Disavanzo di gestione, 5 sezioni comparative (Proventi Istituzionali, Proventi Diversi/Commerciali, Oneri Personale, Rimborsi, Altri Oneri) con voci e totali, Disponibilità Liquide al 31/12 (Cassa/Banca/Totale) + nota giroconti, Dettaglio cronologico movimenti (esclusi giroconti interni) con Data/Tipo/Metodo/Categoria/Descrizione/Importo, luogo+data, firme Segretario + Presidente
+  - Frontend: banner + pulsante "Scarica PDF Rendiconto {year}" nel tab Rendiconto Gestionale (solo admin)
+  - Refactor: estratto helper `_compute_rendiconto` per riuso tra endpoint JSON e PDF
+  - Bump service worker cache a `wm-v8` per forzare update UI
 
 ## Roadmap / Backlog
 - P2: WhatsApp Business API (invio automatico senza wa.me manuale)
 - P2: Push notifications tramite service worker per solleciti in-app
+- P2: Refactor `server.py` (>2400 righe) in moduli `/backend/routes/`
 - P3: Modalità offline avanzata (cache read-only tesserati/abbonamenti)
+- P3: Export Excel del Rendiconto Gestionale
+- P3: Firma digitale (SPID/CIE) sui PDF ufficiali

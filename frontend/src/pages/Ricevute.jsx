@@ -9,8 +9,12 @@ import { Plus, Trash2, Download, Mail, MessageCircle, Eye, Pencil } from "lucide
 import { toast } from "sonner";
 import { useAuth } from "../lib/auth";
 
-const emptyItem = { descrizione: "", num_lezioni: "", importo: 0,
-                    tipo_pacchetto_id: "", esclude_da_compensi: false };
+const _uid = () => (typeof crypto !== "undefined" && crypto.randomUUID)
+  ? crypto.randomUUID()
+  : `it-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+const emptyItem = () => ({ _uid: _uid(), descrizione: "", num_lezioni: "", importo: 0,
+                            tipo_pacchetto_id: "", esclude_da_compensi: false });
 
 async function fetchPdfBlob(rid) {
   const res = await api.get(`/ricevute/${rid}/pdf`, { responseType: "blob" });
@@ -32,7 +36,7 @@ export default function Ricevute() {
   const [emailMessage, setEmailMessage] = useState("");
   const [form, setForm] = useState({
     tesserato_id: "", data: todayIso(), metodo_pagamento: "Contanti",
-    items: [{ ...emptyItem }], note: "", emesso_per_id: "",
+    items: [emptyItem()], note: "", emesso_per_id: "",
   });
 
   const load = async () => {
@@ -48,7 +52,7 @@ export default function Ricevute() {
   const openNew = () => {
     setEditingId(null);
     setForm({ tesserato_id: "", data: todayIso(), metodo_pagamento: "Contanti",
-              items: [{ ...emptyItem }], note: "", emesso_per_id: "" });
+              items: [emptyItem()], note: "", emesso_per_id: "" });
     setOpen(true);
   };
 
@@ -58,6 +62,7 @@ export default function Ricevute() {
       tesserato_id: r.tesserato_id, data: (r.data || "").slice(0, 10),
       metodo_pagamento: r.metodo_pagamento || "Contanti",
       items: r.items.map((i) => ({
+        _uid: _uid(),
         descrizione: i.descrizione, num_lezioni: i.num_lezioni ?? "",
         importo: i.importo, tipo_pacchetto_id: i.tipo_pacchetto_id || "",
         esclude_da_compensi: !!i.esclude_da_compensi,
@@ -67,7 +72,7 @@ export default function Ricevute() {
     setOpen(true);
   };
 
-  const addItem = () => setForm((f) => ({ ...f, items: [...f.items, { ...emptyItem }] }));
+  const addItem = () => setForm((f) => ({ ...f, items: [...f.items, emptyItem()] }));
   const removeItem = (i) => setForm((f) => ({ ...f, items: f.items.filter((_, x) => x !== i) }));
   const updateItem = (i, patch) => setForm((f) => ({
     ...f, items: f.items.map((it, x) => x === i ? { ...it, ...patch } : it)
@@ -303,7 +308,7 @@ export default function Ricevute() {
             <div className="space-y-2">
               <Label className="wm-label text-xs">Voci</Label>
               {form.items.map((it, i) => (
-                <div key={i} className="space-y-2 p-3 bg-black/30 rounded">
+                <div key={it._uid || i} className="space-y-2 p-3 bg-black/30 rounded">
                   <div className="grid grid-cols-2 sm:grid-cols-12 gap-2 items-end">
                     <div className="col-span-2 sm:col-span-3">
                       <Select value={it.tipo_pacchetto_id || ""} onValueChange={(v) => applyTipo(i, v)}>

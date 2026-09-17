@@ -10,7 +10,8 @@ import { toast } from "sonner";
 import { useAuth } from "../lib/auth";
 
 const TIPI = [
-  { v: "assemblea", l: "Assemblea dei Soci" },
+  { v: "assemblea", l: "Assemblea Ordinaria dei Soci" },
+  { v: "assemblea_straordinaria", l: "Assemblea Straordinaria dei Soci" },
   { v: "direttivo", l: "Consiglio Direttivo" },
   { v: "altro", l: "Altro" },
 ];
@@ -152,7 +153,7 @@ export default function Verbali() {
                 </td>
               </tr>
             ))}
-            {Array.isArray(list) && list.length === 0 && (
+            {list.length === 0 && (
               <tr><td colSpan={5} className="p-8 text-center text-white/40">Nessun verbale</td></tr>
             )}
           </tbody>

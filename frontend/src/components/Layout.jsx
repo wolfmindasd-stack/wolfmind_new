@@ -20,7 +20,7 @@ const links = [
   { to: "/libro-soci", label: "Libro Soci", icon: BookUser, testid: "nav-libro-soci" },
   { to: "/movimenti", label: "Libro Contabile", icon: BookOpen, testid: "nav-movimenti" },
   { to: "/compensi", label: "Compensi", icon: Wallet, testid: "nav-compensi" },
-  { to: "/verbali", label: "Verbali", icon: ScrollText, testid: "nav-verbali" },
+  { to: "/verbali", label: "Verbali", icon: ScrollText, testid: "nav-verbali", adminOnly: true },
   { to: "/report", label: "Report Bilancio", icon: BarChart3, testid: "nav-report" },
 ];
 
@@ -68,7 +68,7 @@ export default function Layout({ children }) {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {links.map((l) => (
+        {links.filter((l) => !l.adminOnly || isAdmin).map((l) => (
           <NavLink key={l.to} to={l.to} end={l.to === "/"} data-testid={l.testid}
             onClick={() => setDrawerOpen(false)}
             className={({ isActive }) => `wm-sidebar-link ${isActive ? "active" : ""}`}>

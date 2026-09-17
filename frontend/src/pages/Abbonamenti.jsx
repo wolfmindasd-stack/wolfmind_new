@@ -20,7 +20,12 @@ const CATEGORIE = [
   { v: "Altro", l: "Altro" },
 ];
 
+const _uid = () => (typeof crypto !== "undefined" && crypto.randomUUID)
+  ? crypto.randomUUID()
+  : `it-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
 const emptyItem = () => ({
+  _uid: _uid(),
   descrizione: "", categoria: "Lezioni", num_lezioni: "", importo: 0, tipo_pacchetto_id: null,
 });
 
@@ -120,6 +125,7 @@ export default function Abbonamenti() {
       metodo_pagamento: a.metodo_pagamento || "Contanti",
       items: (a.items && a.items.length > 0)
         ? a.items.map((it) => ({
+            _uid: _uid(),
             descrizione: it.descrizione || "",
             categoria: it.categoria || "Lezioni",
             num_lezioni: it.num_lezioni ?? "",
@@ -127,6 +133,7 @@ export default function Abbonamenti() {
             tipo_pacchetto_id: it.tipo_pacchetto_id || null,
           }))
         : [{
+            _uid: _uid(),
             descrizione: a.descrizione || "",
             categoria: "Lezioni",
             num_lezioni: a.num_lezioni_totali ?? "",
@@ -232,7 +239,7 @@ export default function Abbonamenti() {
     setLezioneOpen(true);
   };
   const addPartecipante = () => {
-    setLezioneForm((f) => ({ ...f, partecipanti: [...f.partecipanti, { abbonamento_id: "" }] }));
+    setLezioneForm((f) => ({ ...f, partecipanti: [...f.partecipanti, { _uid: _uid(), abbonamento_id: "" }] }));
   };
   const removePartecipante = (i) => {
     setLezioneForm((f) => ({ ...f, partecipanti: f.partecipanti.filter((_, x) => x !== i) }));
@@ -442,7 +449,7 @@ export default function Abbonamenti() {
                               {(a.items && a.items.length > 0) ? (
                                 <div className="space-y-1">
                                   {a.items.map((it, i) => (
-                                    <div key={i} className="text-xs bg-black/30 p-2 rounded flex justify-between">
+                                    <div key={`${a.id}-item-${i}`} className="text-xs bg-black/30 p-2 rounded flex justify-between">
                                       <span>
                                         <span className="text-white/50 mr-1">[{it.categoria}]</span>
                                         {it.descrizione}
@@ -671,7 +678,7 @@ export default function Abbonamenti() {
               </div>
               <div className="space-y-2">
                 {form.items.map((it, i) => (
-                  <div key={i} className="wm-card p-3 space-y-2 bg-black/30" data-testid={`abb-item-${i}`}>
+                  <div key={it._uid || i} className="wm-card p-3 space-y-2 bg-black/30" data-testid={`abb-item-${i}`}>
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
                       <div className="sm:col-span-3">
                         <Label className="wm-label text-[10px]">Categoria</Label>
@@ -685,7 +692,7 @@ export default function Abbonamenti() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="sm:col-span-4">
+                      <div className={it.categoria === "Lezioni" ? "sm:col-span-3" : "sm:col-span-4"}>
                         <Label className="wm-label text-[10px]">
                           {it.categoria === "Lezioni" ? "Pacchetto (opz.)" : "Descrizione"}
                         </Label>
@@ -716,7 +723,7 @@ export default function Abbonamenti() {
                         )}
                       </div>
                       {it.categoria === "Lezioni" && (
-                        <div className="sm:col-span-3">
+                        <div className="sm:col-span-2">
                           <Label className="wm-label text-[10px]">Descrizione</Label>
                           <Input value={it.descrizione}
                             onChange={(e) => updateItem(i, { descrizione: e.target.value })}
@@ -733,7 +740,7 @@ export default function Abbonamenti() {
                           className="bg-black/40 border-white/10 h-9 disabled:opacity-40"
                           data-testid={`item-numlez-${i}`} />
                       </div>
-                      <div className={it.categoria === "Lezioni" ? "sm:col-span-1" : "sm:col-span-2"}>
+                      <div className="sm:col-span-2">
                         <Label className="wm-label text-[10px]">Prezzo €</Label>
                         <Input type="number" step="0.01" value={it.importo}
                           onChange={(e) => updateItem(i, { importo: e.target.value })}
@@ -837,7 +844,7 @@ export default function Abbonamenti() {
                     (a.lezioni_residue === null || a.lezioni_residue > 0) ||
                     a.id === p.abbonamento_id);
                   return (
-                    <div key={i} className="flex gap-2 items-center">
+                    <div key={p._uid || i} className="flex gap-2 items-center">
                       <Select value={p.abbonamento_id} onValueChange={(v) => setPartecipante(i, v)}>
                         <SelectTrigger className="bg-black/40 border-white/10 flex-1"
                           data-testid={`partecipante-${i}`}>
