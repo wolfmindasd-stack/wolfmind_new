@@ -62,7 +62,10 @@ logger = logging.getLogger(__name__)
 # ⭐ CORS per il frontend su Cloudflare Pages
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://wolfmind-new.pages.dev"],
+    allow_origins=[
+        "https://wolfmind-new.pages.dev",
+        "https://www.wolfmind-new.pages.dev"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
