@@ -5,6 +5,10 @@
 
 from dotenv import load_dotenv
 from pathlib import Path
+
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / ".env")
+
 import os
 import secrets
 import logging
@@ -19,63 +23,43 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 
 from models import (
-    UserCreate, UserLogin, UserUpdate,
-    TesseratoCreate, TesseratoUpdate,
-    TipoPacchettoCreate, TipoPacchettoUpdate,
-    AbbonamentoCreate, AbbonamentoUpdate,
-    LezioneCreate, RicevutaCreate, RicevutaUpdate,
-    MovimentoCreate, MovimentoUpdate,
-    GirocontoCreate, OrganizzazioneUpdate,
-    SendReceiptEmail,
-    SlotCreate, SlotUpdate, PrenotazioneCreate,
-    ErogaCompenso,
-    VerbaleCreate, VerbaleUpdate,
-    SetCounter, PortalePrenota,
+    UserCreate, UserLogin, UserUpdate, TesseratoCreate, TesseratoUpdate,
+    TipoPacchettoCreate, TipoPacchettoUpdate, AbbonamentoCreate,
+    AbbonamentoUpdate, LezioneCreate, RicevutaCreate, RicevutaUpdate,
+    MovimentoCreate, MovimentoUpdate, GirocontoCreate, OrganizzazioneUpdate,
+    SendReceiptEmail, SlotCreate, SlotUpdate, PrenotazioneCreate, ErogaCompenso,
+    VerbaleCreate, VerbaleUpdate, SetCounter, PortalePrenota,
     TipologiaTesseratoCreate, TipologiaTesseratoUpdate,
     TipologiaRimborsoCreate, TipologiaRimborsoUpdate,
-    RimborsoCreate, RimborsoUpdate,
-    now_iso
+    RimborsoCreate, RimborsoUpdate, now_iso
 )
-
 from auth_utils import (
-    hash_password, verify_password,
-    create_access_token, create_refresh_token,
-    set_auth_cookies, clear_auth_cookies,
+    hash_password, verify_password, create_access_token,
+    create_refresh_token, set_auth_cookies, clear_auth_cookies,
     get_current_user_from_db, require_admin
 )
-
 from pdf_utils import (
     generate_receipt_pdf, generate_balance_report_pdf,
-    generate_libro_soci_pdf, generate_verbale_pdf,
-    generate_compenso_pdf, generate_rimborso_pdf,
-    generate_rendiconto_pdf
+    generate_libro_soci_pdf, generate_verbale_pdf, generate_compenso_pdf,
+    generate_rimborso_pdf, generate_rendiconto_pdf
 )
-
 from email_utils import send_email_with_attachment
 from excel_utils import generate_backup_xlsx
-
-# ============================================================
-# ENV & DB
-# ============================================================
-
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / ".env")
 
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ["DB_NAME"]]
 
-# ============================================================
-# FASTAPI APP
-# ============================================================
-
 app = FastAPI(title="Wolf's Mind Gestionale")
 api = APIRouter(prefix="/api")
 
-# ============================================================
-# CORS PER CLOUDFLARE PAGES (wolfmind-new.pages.dev)
-# ============================================================
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
+# ⭐ CORS per il frontend su Cloudflare Pages
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://wolfmind-new.pages.dev"],
@@ -84,28 +68,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ============================================================
-# LOGGING
-# ============================================================
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
-
-# ============================================================
-# UTILS
-# ============================================================
 
 async def current_user(request: Request):
     return await get_current_user_from_db(request, db)
+
 
 def oid(id_str: str) -> ObjectId:
     try:
         return ObjectId(id_str)
     except Exception:
         raise HTTPException(status_code=400, detail="ID non valido")
+
 
 def serialize(doc: dict) -> dict:
     if not doc:
@@ -118,6 +91,7 @@ def serialize(doc: dict) -> dict:
             doc[k] = str(v)
     doc.pop("password_hash", None)
     return doc
+
 
 # ============================================================
 # AUTH
