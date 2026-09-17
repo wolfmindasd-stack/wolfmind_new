@@ -1,3 +1,4 @@
+// frontend/src/lib/api.js
 import axios from "axios";
 import { API_URL } from "../config";
 
@@ -9,7 +10,7 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-// Alias per retrocompatibilità (vecchi componenti usano "API")
+// Alias per retrocompatibilità
 export const API = api;
 
 // =========================
@@ -27,7 +28,6 @@ api.interceptors.request.use((config) => {
 // FUNZIONI DI UTILITÀ
 // =========================
 
-// Formatta importi in euro
 export function fmtEur(value) {
   return new Intl.NumberFormat("it-IT", {
     style: "currency",
@@ -36,18 +36,15 @@ export function fmtEur(value) {
   }).format(value ?? 0);
 }
 
-// Formatta date ISO → dd/mm/yyyy
 export function fmtDate(value) {
   if (!value) return "";
   return new Intl.DateTimeFormat("it-IT").format(new Date(value));
 }
 
-// Ritorna la data di oggi in formato YYYY-MM-DD
 export function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-// Formatta errori API in modo leggibile
 export function formatApiErrorDetail(err) {
   try {
     if (err?.response?.data?.detail) {
