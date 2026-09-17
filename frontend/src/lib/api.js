@@ -2,20 +2,13 @@
 import axios from "axios";
 import { API_URL } from "../config";
 
-// =========================
-// CLIENT AXIOS
-// =========================
 export const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
 });
 
-// Alias per retrocompatibilità
 export const API = api;
 
-// =========================
-// INTERCEPTOR: aggiunge il token JWT
-// =========================
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -23,10 +16,6 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
-
-// =========================
-// FUNZIONI DI UTILITÀ
-// =========================
 
 export function fmtEur(value) {
   return new Intl.NumberFormat("it-IT", {
