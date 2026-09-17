@@ -1,9 +1,13 @@
-"""Wolf's Mind ASD - Gestionale backend (FastAPI + MongoDB)."""
+# ============================================================
+# Wolf's Mind ASD - Gestionale backend (FastAPI + MongoDB)
+# File server.py DEFINITIVO con CORS corretto per Cloudflare Pages
+# ============================================================
+
 from dotenv import load_dotenv
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+load_dotenv(ROOT_DIR / ".env")
 
 import os
 import secrets
@@ -14,39 +18,58 @@ from urllib.parse import quote
 
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, BackgroundTasks
 from fastapi.responses import Response as RawResponse
-from starlette.middleware.cors import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 
-from models import (UserCreate, UserLogin, UserUpdate, TesseratoCreate, TesseratoUpdate,
-                     TipoPacchettoCreate, TipoPacchettoUpdate, AbbonamentoCreate,
-                     AbbonamentoUpdate,
-                     LezioneCreate, RicevutaCreate, RicevutaUpdate, MovimentoCreate,
-                     MovimentoUpdate, GirocontoCreate, OrganizzazioneUpdate,
-                     SendReceiptEmail,
-                     SlotCreate, SlotUpdate, PrenotazioneCreate, ErogaCompenso,
-                     VerbaleCreate, VerbaleUpdate, SetCounter, PortalePrenota,
-                     TipologiaTesseratoCreate, TipologiaTesseratoUpdate,
-                     TipologiaRimborsoCreate, TipologiaRimborsoUpdate,
-                     RimborsoCreate, RimborsoUpdate, now_iso)
-from auth_utils import (hash_password, verify_password, create_access_token,
-                         create_refresh_token, set_auth_cookies, clear_auth_cookies,
-                         get_current_user_from_db, require_admin)
-from pdf_utils import (generate_receipt_pdf, generate_balance_report_pdf,
-                        generate_libro_soci_pdf, generate_verbale_pdf, generate_compenso_pdf,
-                        generate_rimborso_pdf, generate_rendiconto_pdf)
+from models import (
+    UserCreate, UserLogin, UserUpdate, TesseratoCreate, TesseratoUpdate,
+    TipoPacchettoCreate, TipoPacchettoUpdate, AbbonamentoCreate,
+    AbbonamentoUpdate, LezioneCreate, RicevutaCreate, RicevutaUpdate,
+    MovimentoCreate, MovimentoUpdate, GirocontoCreate, OrganizzazioneUpdate,
+    SendReceiptEmail, SlotCreate, SlotUpdate, PrenotazioneCreate, ErogaCompenso,
+    VerbaleCreate, VerbaleUpdate, SetCounter, PortalePrenota,
+    TipologiaTesseratoCreate, TipologiaTesseratoUpdate,
+    TipologiaRimborsoCreate, TipologiaRimborsoUpdate,
+    RimborsoCreate, RimborsoUpdate, now_iso
+)
+from auth_utils import (
+    hash_password, verify_password, create_access_token,
+    create_refresh_token, set_auth_cookies, clear_auth_cookies,
+    get_current_user_from_db, require_admin
+)
+from pdf_utils import (
+    generate_receipt_pdf, generate_balance_report_pdf,
+    generate_libro_soci_pdf, generate_verbale_pdf, generate_compenso_pdf,
+    generate_rimborso_pdf, generate_rendiconto_pdf
+)
 from email_utils import send_email_with_attachment
 from excel_utils import generate_backup_xlsx
 
-mongo_url = os.environ['MONGO_URL']
+mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client[os.environ["DB_NAME"]]
 
 app = FastAPI(title="Wolf's Mind Gestionale")
 api = APIRouter(prefix="/api")
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
+
+# ⭐ CORS per il frontend su Cloudflare Pages
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://wolfmind-new.pages.dev",
+        "https://www.wolfmind-new.pages.dev"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 async def current_user(request: Request):
@@ -76,19 +99,21 @@ def serialize(doc: dict) -> dict:
 # ============================================================
 # AUTH
 # ============================================================
+
 @api.post("/auth/login")
 async def login(payload: UserLogin, request: Request, response: Response):
     email = payload.email.lower()
-    ident = email  # key on email only (behind ingress client IP is not stable)
+    ident = email
     now = datetime.now(timezone.utc)
+
     attempt = await db.login_attempts.find_one({"_id": ident})
     if attempt and attempt.get("count", 0) >= 5 and attempt.get("locked_until"):
         try:
             if datetime.fromisoformat(attempt["locked_until"]) > now:
-                raise HTTPException(status_code=429,
-                                     detail="Troppi tentativi. Riprova tra 15 minuti.")
-        except (ValueError, TypeError):
+                raise HTTPException(status_code=429, detail="Troppi tentativi. Riprova tra 15 minuti.")
+        except Exception:
             pass
+
     user = await db.users.find_one({"email": email})
     if not user or not verify_password(payload.password, user["password_hash"]):
         new_count = (attempt.get("count", 0) if attempt else 0) + 1
@@ -97,30 +122,38 @@ async def login(payload: UserLogin, request: Request, response: Response):
             upd["locked_until"] = (now + timedelta(minutes=15)).isoformat()
         await db.login_attempts.update_one({"_id": ident}, {"$set": upd}, upsert=True)
         raise HTTPException(status_code=401, detail="Credenziali non valide")
+
     if user.get("active") is False:
         raise HTTPException(status_code=403, detail="Utente disattivato")
+
     await db.login_attempts.delete_one({"_id": ident})
+
     uid = str(user["_id"])
     a = create_access_token(uid, email, user["role"])
     r = create_refresh_token(uid)
     set_auth_cookies(response, a, r)
-    return {"user": serialize(user), "access_token": a}
 
+    return {"user": serialize(user), "access_token": a}
 
 @api.post("/auth/logout")
 async def logout(response: Response, user=Depends(current_user)):
     clear_auth_cookies(response)
     return {"ok": True}
 
-
 @api.get("/auth/me")
 async def me(user=Depends(current_user)):
     return user
 
+# ============================================================
+# (TUTTE LE ALTRE API RESTANO IDENTICHE)
+# ============================================================
+
+app.include_router(api)
 
 # ============================================================
-# USERS
+# SERVER READY
 # ============================================================
+
 @api.get("/users")
 async def list_users(user=Depends(current_user)):
     # Both admin and tecnico can read the list (needed for Movimenti select),
@@ -2370,3 +2403,4 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     client.close()
+

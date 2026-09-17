@@ -1,13 +1,21 @@
+// frontend/src/lib/auth.jsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { api } from "./api";
 
 const AuthCtx = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null); // null=checking, false=anon, obj=user
+  const [user, setUser] = useState(null);
+
   useEffect(() => {
     (async () => {
       try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          setUser(false);
+          return;
+        }
+
         const { data } = await api.get("/auth/me");
         setUser(data);
       } catch {
@@ -18,6 +26,7 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const { data } = await api.post("/auth/login", { email, password });
+    localStorage.setItem("token", data.access_token);
     setUser(data.user);
     return data.user;
   };
@@ -25,9 +34,8 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       await api.post("/auth/logout");
-    } catch (err) {
-      console.warn("Logout request failed (session already invalid?):", err?.message);
-    }
+    } catch {}
+    localStorage.removeItem("token");
     setUser(false);
   };
 

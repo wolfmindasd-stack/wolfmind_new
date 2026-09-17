@@ -1,3 +1,4 @@
+// frontend/src/lib/api.js
 import axios from "axios";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -8,27 +9,46 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-export function formatApiErrorDetail(detail) {
-  if (detail == null) return "Errore imprevisto. Riprova.";
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail))
-    return detail.map((e) => (e && typeof e.msg === "string" ? e.msg : JSON.stringify(e))).join(" ");
-  if (detail && typeof detail.msg === "string") return detail.msg;
-  return String(detail);
+// Interceptor: aggiunge il token JWT
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Formatta importi in euro
+export function fmtEur(value) {
+  return new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 2,
+  }).format(value ?? 0);
 }
 
-export const fmtEur = (v) => {
-  const n = Number(v || 0);
-  return n.toLocaleString("it-IT", { style: "currency", currency: "EUR" });
-};
+// Formatta date ISO → dd/mm/yyyy
+export function fmtDate(value) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("it-IT").format(new Date(value));
+}
 
-export const fmtDate = (iso) => {
-  if (!iso) return "-";
+// Ritorna la data di oggi in formato YYYY-MM-DD
+export function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Formatta errori API in modo leggibile
+export function formatApiErrorDetail(err) {
   try {
-    return new Date(iso).toLocaleDateString("it-IT");
+    if (err?.response?.data?.detail) {
+      return err.response.data.detail;
+    }
+    if (err?.message) {
+      return err.message;
+    }
+    return "Errore sconosciuto";
   } catch {
-    return iso;
+    return "Errore sconosciuto";
   }
-};
-
-export const todayIso = () => new Date().toISOString().slice(0, 10);
+}
