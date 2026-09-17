@@ -180,4 +180,3 @@ app.include_router(api)
 @app.get("/")
 async def root():
     return {"status": "ok", "service": "wolfmind-new backend"}
-
