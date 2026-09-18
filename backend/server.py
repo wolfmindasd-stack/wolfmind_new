@@ -45,21 +45,8 @@ db = client[os.environ['DB_NAME']]
 app = FastAPI(title="Wolf's Mind Gestionale")
 api = APIRouter(prefix="/api")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["https://wolfmind-new.pages.dev"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
 
 
 async def current_user(request: Request):
@@ -2320,18 +2307,10 @@ async def cron_solleciti(request: Request, background: BackgroundTasks):
 
 app.include_router(api)
 
-from fastapi.middleware.cors import CORSMiddleware
-
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://84ed36d8.wolfmind-new.pages.dev",
-        "https://wolfmind-new.pages.dev"
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    CORSMiddleware, allow_credentials=True,
+    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_methods=["*"], allow_headers=["*"])
 
 
 @app.on_event("startup")
