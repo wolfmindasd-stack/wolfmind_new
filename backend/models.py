@@ -74,6 +74,22 @@ class TesseratoUpdate(BaseModel):
     tipologia: Optional[str] = None
     assigned_tecnico_id: Optional[str] = None
 
+# ORM model for Tipologia Tesserato
+class TipologiaTesserato(Base):
+    __tablename__ = "tipologie_tesserato"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, nullable=False)
+    attivo = Column(Boolean, default=True)
+
+
+# ORM model for Tipologia Rimborso
+class TipologiaRimborso(Base):
+    __tablename__ = "tipologie_rimborso"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, nullable=False)
+    attivo = Column(Boolean, default=True)
 
 # --- Tipologia Tesserato (configurable) ---
 class TipologiaTesseratoCreate(BaseModel):
