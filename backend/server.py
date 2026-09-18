@@ -45,8 +45,21 @@ db = client[os.environ['DB_NAME']]
 app = FastAPI(title="Wolf's Mind Gestionale")
 api = APIRouter(prefix="/api")
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://wolfmind-new.pages.dev"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
+
 
 
 async def current_user(request: Request):
