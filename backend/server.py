@@ -47,12 +47,11 @@ api = APIRouter(prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https://.*\.wolfmind-new\.pages\.dev",
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 
 logging.basicConfig(
