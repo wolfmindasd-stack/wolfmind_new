@@ -1,15 +1,11 @@
-// frontend/src/lib/api.js
 import axios from "axios";
 
-// Cloudflare Pages NON passa sempre REACT_APP_BACKEND_URL.
-// Quindi usiamo fallback automatico.
-const BACKEND_URL =
-  process.env.REACT_APP_BACKEND_URL || "https://wolfmind-new.onrender.com";
-
-export const API = `${BACKEND_URL}/api`;
+// Usa direttamente la variabile API_URL impostata su Cloudflare
+const API_URL =
+  process.env.REACT_APP_API_URL || "https://wolfmind-backend-new.onrender.com/api";
 
 export const api = axios.create({
-  baseURL: API,
+  baseURL: API_URL,
   withCredentials: true,
 });
 
