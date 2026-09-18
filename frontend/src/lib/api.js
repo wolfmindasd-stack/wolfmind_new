@@ -1,7 +1,10 @@
 // frontend/src/lib/api.js
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+// Usa la variabile ENV se esiste, altrimenti fallback automatico
+const BACKEND_URL =
+  process.env.REACT_APP_BACKEND_URL || "https://wolfmind-new.onrender.com";
+
 export const API = `${BACKEND_URL}/api`;
 
 export const api = axios.create({
