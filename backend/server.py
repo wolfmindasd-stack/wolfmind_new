@@ -2290,68 +2290,7 @@ async def _run_solleciti_scadenze():
                 "_id": key, "tesserato_id": str(t["_id"]),
                 "tipo": tipo, "scadenza": scad, "sent_at": now_iso()})
 
-# -------------------------------
-# TIPLOGIE TESSERATO
-# -------------------------------
 
-@api.get("/tipologie-tesserato")
-async def list_tipologie_tesserato(user=Depends(current_user)):
-    items = list(db["tipologie_tesserato"].find({}))
-    for x in items:
-        x["_id"] = str(x["_id"])
-    return items
-
-
-@api.post("/tipologie-tesserato")
-async def create_tipologia_tesserato(payload: TipologiaTesseratoCreate, user=Depends(current_user)):
-    data = payload.dict()
-    db["tipologie_tesserato"].insert_one(data)
-    return {"ok": True}
-
-
-@api.put("/tipologie-tesserato/{id}")
-async def update_tipologia_tesserato(id: str, payload: TipologiaTesseratoUpdate, user=Depends(current_user)):
-    update_data = {k: v for k, v in payload.dict().items() if v is not None}
-    db["tipologie_tesserato"].update_one({"_id": oid(id)}, {"$set": update_data})
-    return {"ok": True}
-
-
-@api.delete("/tipologie-tesserato/{id}")
-async def delete_tipologia_tesserato(id: str, user=Depends(current_user)):
-    db["tipologie_tesserato"].delete_one({"_id": oid(id)})
-    return {"ok": True}
-
-
-# -------------------------------
-# TIPLOGIE RIMBORSO
-# -------------------------------
-
-@api.get("/tipologie-rimborso")
-async def list_tipologie_rimborso(user=Depends(current_user)):
-    items = list(db["tipologie_rimborso"].find({}))
-    for x in items:
-        x["_id"] = str(x["_id"])
-    return items
-
-
-@api.post("/tipologie-rimborso")
-async def create_tipologia_rimborso(payload: TipologiaRimborsoCreate, user=Depends(current_user)):
-    data = payload.dict()
-    db["tipologie_rimborso"].insert_one(data)
-    return {"ok": True}
-
-
-@api.put("/tipologie-rimborso/{id}")
-async def update_tipologia_rimborso(id: str, payload: TipologiaRimborsoUpdate, user=Depends(current_user)):
-    update_data = {k: v for k, v in payload.dict().items() if v is not None}
-    db["tipologie_rimborso"].update_one({"_id": oid(id)}, {"$set": update_data})
-    return {"ok": True}
-
-
-@api.delete("/tipologie-rimborso/{id}")
-async def delete_tipologia_rimborso(id: str, user=Depends(current_user)):
-    db["tipologie_rimborso"].delete_one({"_id": oid(id)})
-    return {"ok": True}
 # -------------------------------
 # TIPLOGIE TESSERATO
 # -------------------------------
