@@ -45,7 +45,7 @@ function TipologieTab() {
   const [nuovoNome, setNuovoNome] = useState("");
 
   const load = async () => {
-    const { data } = await api.get("/tipologie-tesserato");
+    const { data } = await api.get("/api/tipologie-tesserato");
     setList(data);
   };
   useEffect(() => { load(); }, []);
