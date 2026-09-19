@@ -275,7 +275,7 @@ function UtentiTab() {
   const [form, setForm] = useState({ email: "", name: "", password: "",
     role: "tecnico", percentuale_compenso: 50, active: true });
 
-  const load = async () => { const { data } = await api.get("/users"); setUsers(data); };
+  const load = async () => { const { data } = await api.get("/api/users"); setUsers(data); };
   useEffect(() => { load(); }, []);
 
   const openNew = () => {
