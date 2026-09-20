@@ -142,4 +142,31 @@ class TipoPacchettoCreate(BaseModel):
 class TipoPacchettoUpdate(BaseModel):
     nome: Optional[str] = None
     attivo: Optional[bool] = None
+    # --- Abbonamenti ---
+class Abbonamento(BaseModel):
+    tesserato_id: str
+    tipo: str
+    importo: float
+    data_inizio: str
+    data_fine: Optional[str] = None
+    note: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class AbbonamentoCreate(BaseModel):
+    tesserato_id: str
+    tipo: str
+    importo: float
+    data_inizio: str
+    data_fine: Optional[str] = None
+    note: Optional[str] = None
+
+
+class AbbonamentoUpdate(BaseModel):
+    tipo: Optional[str] = None
+    importo: Optional[float] = None
+    data_inizio: Optional[str] = None
+    data_fine: Optional[str] = None
+    note: Optional[str] = None
+
 
