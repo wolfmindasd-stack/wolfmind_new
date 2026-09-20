@@ -195,5 +195,41 @@ class LezioneUpdate(BaseModel):
     importo: Optional[float] = None
     note: Optional[str] = None
 
+# --- Ricevute ---
+class Ricevuta(BaseModel):
+    numero: int
+    seq: int
+    anno: int
+    data: str
+    tesserato_id: str
+    tesserato_nome: str
+    metodo_pagamento: str
+    items: list
+    totale: float
+    note: Optional[str] = None
+    emesso_da_id: str
+    emesso_da_nome: str
+    emesso_per_id: str
+    emesso_per_nome: str
+    annullata: bool = False
+    public_token: str
+    abbonamento_id: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class RicevutaCreate(BaseModel):
+    data: str
+    tesserato_id: str
+    metodo_pagamento: str
+    items: list
+    note: Optional[str] = None
+
+
+class RicevutaUpdate(BaseModel):
+    data: Optional[str] = None
+    metodo_pagamento: Optional[str] = None
+    items: Optional[list] = None
+    note: Optional[str] = None
+    annullata: Optional[bool] = None
 
 
