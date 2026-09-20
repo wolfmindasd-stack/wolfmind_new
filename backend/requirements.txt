@@ -4,3 +4,4 @@ motor
 pydantic
 pydantic[email]
 python-dotenv
+bcrypt==4.1.2
