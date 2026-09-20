@@ -232,4 +232,111 @@ class RicevutaUpdate(BaseModel):
     note: Optional[str] = None
     annullata: Optional[bool] = None
 
+# --- Movimenti ---
+class MovimentoCreate(BaseModel):
+    data: str
+    tipo: str  # entrata / uscita
+    categoria: str
+    descrizione: str
+    importo: float
+    metodo: str
+    note: Optional[str] = None
+    tecnico_id: Optional[str] = None
+    abbonamento_id: Optional[str] = None
+    ricevuta_id: Optional[str] = None
+
+
+class MovimentoUpdate(BaseModel):
+    data: Optional[str] = None
+    categoria: Optional[str] = None
+    descrizione: Optional[str] = None
+    importo: Optional[float] = None
+    metodo: Optional[str] = None
+    note: Optional[str] = None
+
+
+# --- Giroconto ---
+class GirocontoCreate(BaseModel):
+    data: str
+    descrizione: str
+    importo: float
+    da: str
+    a: str
+    note: Optional[str] = None
+
+
+# --- Organizzazione ---
+class OrganizzazioneUpdate(BaseModel):
+    nome: Optional[str] = None
+    indirizzo: Optional[str] = None
+    piva: Optional[str] = None
+    cf: Optional[str] = None
+    email: Optional[str] = None
+    telefono: Optional[str] = None
+
+
+# --- Email per ricevute ---
+class SendReceiptEmail(BaseModel):
+    ricevuta_id: str
+    destinatario: EmailStr
+
+
+# --- Slot ---
+class SlotCreate(BaseModel):
+    data: str
+    ora_inizio: str
+    ora_fine: str
+    tipo: str
+    note: Optional[str] = None
+
+
+class SlotUpdate(BaseModel):
+    data: Optional[str] = None
+    ora_inizio: Optional[str] = None
+    ora_fine: Optional[str] = None
+    tipo: Optional[str] = None
+    note: Optional[str] = None
+
+
+# --- Prenotazioni ---
+class PrenotazioneCreate(BaseModel):
+    slot_id: str
+    tesserato_id: str
+    note: Optional[str] = None
+
+
+# --- Compensi ---
+class ErogaCompenso(BaseModel):
+    tecnico_id: str
+    data: str
+    importo: float
+    note: Optional[str] = None
+
+
+# --- Verbali ---
+class VerbaleCreate(BaseModel):
+    data: str
+    titolo: str
+    contenuto: str
+    note: Optional[str] = None
+
+
+class VerbaleUpdate(BaseModel):
+    data: Optional[str] = None
+    titolo: Optional[str] = None
+    contenuto: Optional[str] = None
+    note: Optional[str] = None
+
+
+# --- Contatori ---
+class SetCounter(BaseModel):
+    anno: int
+    seq: int
+
+
+# --- Portale Prenotazioni ---
+class PortalePrenota(BaseModel):
+    tesserato_id: str
+    slot_id: str
+    token: str
 
