@@ -127,3 +127,19 @@ class RimborsoUpdate(BaseModel):
     importo: Optional[float] = None
     data: Optional[str] = None
     note: Optional[str] = None
+    # --- Tipologie Pacchetto ---
+class TipoPacchetto(BaseModel):
+    nome: str
+    attivo: bool = True
+    created_at: Optional[str] = None
+
+
+class TipoPacchettoCreate(BaseModel):
+    nome: str
+    attivo: bool = True
+
+
+class TipoPacchettoUpdate(BaseModel):
+    nome: Optional[str] = None
+    attivo: Optional[bool] = None
+
