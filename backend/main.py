@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
-
-@app.get("/")
-def root():
-    return {"status": "ok", "message": "Backend FastAPI attivo"}
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://wolfmind-new.pages.dev"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
