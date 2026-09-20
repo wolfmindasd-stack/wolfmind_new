@@ -168,5 +168,32 @@ class AbbonamentoUpdate(BaseModel):
     data_inizio: Optional[str] = None
     data_fine: Optional[str] = None
     note: Optional[str] = None
+    # --- Lezioni ---
+class Lezione(BaseModel):
+    tesserato_id: str
+    tipo: str
+    data: str
+    durata: float
+    importo: float
+    note: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class LezioneCreate(BaseModel):
+    tesserato_id: str
+    tipo: str
+    data: str
+    durata: float
+    importo: float
+    note: Optional[str] = None
+
+
+class LezioneUpdate(BaseModel):
+    tipo: Optional[str] = None
+    data: Optional[str] = None
+    durata: Optional[float] = None
+    importo: Optional[float] = None
+    note: Optional[str] = None
+
 
 
