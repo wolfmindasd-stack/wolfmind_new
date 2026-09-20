@@ -42,7 +42,7 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-app = FastAPI(title="Wolf's Mind Gestionale")
+router = APIRouter(prefix="/api")
 api = APIRouter(prefix="/api")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -76,7 +76,7 @@ def serialize(doc: dict) -> dict:
 # ============================================================
 # AUTH
 # ============================================================
-@api.post("/auth/login")
+@router.post("/auth/login")
 async def login(payload: UserLogin, request: Request, response: Response):
     email = payload.email.lower()
     ident = email  # key on email only (behind ingress client IP is not stable)
@@ -107,13 +107,13 @@ async def login(payload: UserLogin, request: Request, response: Response):
     return {"user": serialize(user), "access_token": a}
 
 
-@api.post("/auth/logout")
+@router.post("/auth/logout")
 async def logout(response: Response, user=Depends(current_user)):
     clear_auth_cookies(response)
     return {"ok": True}
 
 
-@api.get("/auth/me")
+@router.get("/auth/me")
 async def me(user=Depends(current_user)):
     return user
 
@@ -121,7 +121,7 @@ async def me(user=Depends(current_user)):
 # ============================================================
 # USERS
 # ============================================================
-@api.get("/users")
+@router.get("/users")
 async def list_users(user=Depends(current_user)):
     # Both admin and tecnico can read the list (needed for Movimenti select),
     # but only admin sees password/full data - password_hash is stripped anyway.
@@ -129,7 +129,7 @@ async def list_users(user=Depends(current_user)):
     return [serialize(d) for d in docs]
 
 
-@api.post("/users")
+@router.post("/users")
 async def create_user(payload: UserCreate, user=Depends(current_user)):
     require_admin(user)
     email = payload.email.lower()
@@ -144,7 +144,7 @@ async def create_user(payload: UserCreate, user=Depends(current_user)):
     return serialize(doc)
 
 
-@api.patch("/users/{uid}")
+@router.patch("/users/{uid}")
 async def update_user(uid: str, payload: UserUpdate, user=Depends(current_user)):
     require_admin(user)
     upd = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
@@ -159,7 +159,7 @@ async def update_user(uid: str, payload: UserUpdate, user=Depends(current_user))
     return serialize(doc)
 
 
-@api.delete("/users/{uid}")
+@router.delete("/users/{uid}")
 async def delete_user(uid: str, user=Depends(current_user)):
     require_admin(user)
     if uid == user["id"]:
@@ -173,7 +173,7 @@ async def delete_user(uid: str, user=Depends(current_user)):
 # ============================================================
 # TESSERATI
 # ============================================================
-@api.get("/tesserati")
+@router.get("/tesserati")
 async def list_tesserati(user=Depends(current_user)):
     q = {}
     if user["role"] != "admin":
@@ -191,7 +191,7 @@ async def list_tesserati(user=Depends(current_user)):
     return [serialize(d) for d in docs]
 
 
-@api.post("/tesserati")
+@router.post("/tesserati")
 async def create_tesserato(payload: TesseratoCreate, user=Depends(current_user)):
     doc = payload.model_dump()
     # Tecnico non può assegnare ad altri: forza a se stesso
@@ -205,7 +205,7 @@ async def create_tesserato(payload: TesseratoCreate, user=Depends(current_user))
     return serialize(doc)
 
 
-@api.get("/tesserati/{tid}")
+@router.get("/tesserati/{tid}")
 async def get_tesserato(tid: str, user=Depends(current_user)):
     doc = await db.tesserati.find_one({"_id": oid(tid)})
     if not doc:
@@ -213,7 +213,7 @@ async def get_tesserato(tid: str, user=Depends(current_user)):
     return serialize(doc)
 
 
-@api.patch("/tesserati/{tid}")
+@router.patch("/tesserati/{tid}")
 async def update_tesserato(tid: str, payload: TesseratoUpdate, user=Depends(current_user)):
     upd = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
     if not upd:
@@ -230,13 +230,13 @@ async def update_tesserato(tid: str, payload: TesseratoUpdate, user=Depends(curr
 
 
 # --- Tipologie tesserato (configurabili da admin) ---
-@api.get("/tipologie-tesserato")
+@router.get("/tipologie-tesserato")
 async def list_tipologie(user=Depends(current_user)):
     docs = await db.tipologie_tesserato.find({}).sort("nome", 1).to_list(200)
     return [serialize(d) for d in docs]
 
 
-@api.post("/tipologie-tesserato")
+@router.post("/tipologie-tesserato")
 async def create_tipologia(payload: TipologiaTesseratoCreate, user=Depends(current_user)):
     require_admin(user)
     doc = payload.model_dump()
@@ -246,7 +246,7 @@ async def create_tipologia(payload: TipologiaTesseratoCreate, user=Depends(curre
     return serialize(doc)
 
 
-@api.patch("/tipologie-tesserato/{tid}")
+@router.patch("/tipologie-tesserato/{tid}")
 async def update_tipologia(tid: str, payload: TipologiaTesseratoUpdate,
                              user=Depends(current_user)):
     require_admin(user)
@@ -260,7 +260,7 @@ async def update_tipologia(tid: str, payload: TipologiaTesseratoUpdate,
     return serialize(doc)
 
 
-@api.delete("/tipologie-tesserato/{tid}")
+@router.delete("/tipologie-tesserato/{tid}")
 async def delete_tipologia(tid: str, user=Depends(current_user)):
     require_admin(user)
     res = await db.tipologie_tesserato.delete_one({"_id": oid(tid)})
@@ -272,13 +272,13 @@ async def delete_tipologia(tid: str, user=Depends(current_user)):
 # ============================================================
 # TIPOLOGIE RIMBORSO (percipienti: Collaboratore, Volontario, ...)
 # ============================================================
-@api.get("/tipologie-rimborso")
+@router.get("/tipologie-rimborso")
 async def list_tipologie_rimborso(user=Depends(current_user)):
     docs = await db.tipologie_rimborso.find({}).sort("nome", 1).to_list(200)
     return [serialize(d) for d in docs]
 
 
-@api.post("/tipologie-rimborso")
+@router.post("/tipologie-rimborso")
 async def create_tipologia_rimborso(payload: TipologiaRimborsoCreate,
                                       user=Depends(current_user)):
     require_admin(user)
@@ -289,7 +289,7 @@ async def create_tipologia_rimborso(payload: TipologiaRimborsoCreate,
     return serialize(doc)
 
 
-@api.patch("/tipologie-rimborso/{tid}")
+@router.patch("/tipologie-rimborso/{tid}")
 async def update_tipologia_rimborso(tid: str, payload: TipologiaRimborsoUpdate,
                                       user=Depends(current_user)):
     require_admin(user)
@@ -303,7 +303,7 @@ async def update_tipologia_rimborso(tid: str, payload: TipologiaRimborsoUpdate,
     return serialize(doc)
 
 
-@api.delete("/tipologie-rimborso/{tid}")
+@router.delete("/tipologie-rimborso/{tid}")
 async def delete_tipologia_rimborso(tid: str, user=Depends(current_user)):
     require_admin(user)
     res = await db.tipologie_rimborso.delete_one({"_id": oid(tid)})
@@ -315,14 +315,14 @@ async def delete_tipologia_rimborso(tid: str, user=Depends(current_user)):
 # ============================================================
 # RIMBORSI SPESE (collaboratori, volontari, amministratori, ...)
 # ============================================================
-@api.get("/rimborsi")
+@router.get("/rimborsi")
 async def list_rimborsi(user=Depends(current_user)):
     q = {} if user["role"] == "admin" else {"created_by": user["id"]}
     docs = await db.rimborsi.find(q).sort("data", -1).to_list(1000)
     return [serialize(d) for d in docs]
 
 
-@api.post("/rimborsi")
+@router.post("/rimborsi")
 async def create_rimborso(payload: RimborsoCreate, user=Depends(current_user)):
     require_admin(user)
     if payload.importo <= 0:
@@ -347,7 +347,7 @@ async def create_rimborso(payload: RimborsoCreate, user=Depends(current_user)):
     return serialize(doc)
 
 
-@api.patch("/rimborsi/{rid}")
+@router.patch("/rimborsi/{rid}")
 async def update_rimborso(rid: str, payload: RimborsoUpdate,
                             user=Depends(current_user)):
     require_admin(user)
@@ -377,7 +377,7 @@ async def update_rimborso(rid: str, payload: RimborsoUpdate,
     return serialize(doc2)
 
 
-@api.delete("/rimborsi/{rid}")
+@router.delete("/rimborsi/{rid}")
 async def delete_rimborso(rid: str, user=Depends(current_user)):
     require_admin(user)
     doc = await db.rimborsi.find_one({"_id": oid(rid)})
@@ -392,7 +392,7 @@ async def delete_rimborso(rid: str, user=Depends(current_user)):
     return {"ok": True}
 
 
-@api.get("/rimborsi/{rid}/pdf")
+@router.get("/rimborsi/{rid}/pdf")
 async def rimborso_pdf(rid: str, user=Depends(current_user)):
     doc = await db.rimborsi.find_one({"_id": oid(rid)})
     if not doc:
@@ -405,7 +405,7 @@ async def rimborso_pdf(rid: str, user=Depends(current_user)):
                               f"inline; filename=Rimborso_{doc.get('nome_percipiente','x').replace(' ','_')}_{doc.get('data','')[:10]}.pdf"})
 
 
-@api.delete("/tesserati/{tid}")
+@router.delete("/tesserati/{tid}")
 async def delete_tesserato(tid: str, user=Depends(current_user)):
     require_admin(user)
     res = await db.tesserati.delete_one({"_id": oid(tid)})
@@ -417,13 +417,13 @@ async def delete_tesserato(tid: str, user=Depends(current_user)):
 # ============================================================
 # TIPI PACCHETTO
 # ============================================================
-@api.get("/tipi-pacchetto")
+@router.get("/tipi-pacchetto")
 async def list_tipi(user=Depends(current_user)):
     docs = await db.tipi_pacchetto.find({}).sort("nome", 1).to_list(200)
     return [serialize(d) for d in docs]
 
 
-@api.post("/tipi-pacchetto")
+@router.post("/tipi-pacchetto")
 async def create_tipo(payload: TipoPacchettoCreate, user=Depends(current_user)):
     require_admin(user)
     doc = payload.model_dump(); doc["created_at"] = now_iso()
@@ -432,7 +432,7 @@ async def create_tipo(payload: TipoPacchettoCreate, user=Depends(current_user)):
     return serialize(doc)
 
 
-@api.patch("/tipi-pacchetto/{pid}")
+@router.patch("/tipi-pacchetto/{pid}")
 async def update_tipo(pid: str, payload: TipoPacchettoUpdate, user=Depends(current_user)):
     require_admin(user)
     upd = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
@@ -443,7 +443,7 @@ async def update_tipo(pid: str, payload: TipoPacchettoUpdate, user=Depends(curre
     return serialize(doc)
 
 
-@api.delete("/tipi-pacchetto/{pid}")
+@router.delete("/tipi-pacchetto/{pid}")
 async def delete_tipo(pid: str, user=Depends(current_user)):
     require_admin(user)
     res = await db.tipi_pacchetto.delete_one({"_id": oid(pid)})
@@ -466,7 +466,7 @@ async def _spesa_totale_per_tesserato(tesserato_id: str) -> float:
     return sum(r.get("totale", 0) for r in rics)
 
 
-@api.get("/abbonamenti")
+@router.get("/abbonamenti")
 async def list_abbonamenti(tesserato_id: Optional[str] = None,
                            stato: Optional[str] = None,
                            user=Depends(current_user)):
@@ -509,7 +509,7 @@ async def list_abbonamenti(tesserato_id: Optional[str] = None,
     return result
 
 
-@api.patch("/abbonamenti/{aid}")
+@router.patch("/abbonamenti/{aid}")
 async def update_abbonamento(aid: str, payload: AbbonamentoUpdate,
                               user=Depends(current_user)):
     ab = await db.abbonamenti.find_one({"_id": oid(aid)})
@@ -695,7 +695,7 @@ async def _handle_quota_tessera(ab: dict) -> None:
             {"$set": {"scadenza_tesseramento": new_exp}})
 
 
-@api.post("/abbonamenti")
+@router.post("/abbonamenti")
 async def create_abbonamento(payload: AbbonamentoCreate, user=Depends(current_user)):
     doc = payload.model_dump()
     doc["created_at"] = now_iso()
@@ -763,7 +763,7 @@ async def create_abbonamento(payload: AbbonamentoCreate, user=Depends(current_us
     return serialize(doc2)
 
 
-@api.delete("/abbonamenti/{aid}")
+@router.delete("/abbonamenti/{aid}")
 async def delete_abbonamento(aid: str, user=Depends(current_user)):
     require_admin(user)
     ab = await db.abbonamenti.find_one({"_id": oid(aid)})
@@ -780,7 +780,7 @@ async def delete_abbonamento(aid: str, user=Depends(current_user)):
     return {"ok": True}
 
 
-@api.post("/abbonamenti/{aid}/genera-ricevuta")
+@router.post("/abbonamenti/{aid}/genera-ricevuta")
 async def genera_ricevuta_per_abbonamento(aid: str, user=Depends(current_user)):
     """Genera manualmente la ricevuta per un abbonamento (se non ancora esistente)."""
     ab = await db.abbonamenti.find_one({"_id": oid(aid)})
@@ -808,7 +808,7 @@ async def genera_ricevuta_per_abbonamento(aid: str, user=Depends(current_user)):
     return {"ok": True, "ricevuta_id": rid, "numero": ric.get("numero")}
 
 
-@api.get("/abbonamenti/{aid}/storico")
+@router.get("/abbonamenti/{aid}/storico")
 async def storico_abbonamento(aid: str, user=Depends(current_user)):
     ab = await db.abbonamenti.find_one({"_id": oid(aid)})
     if not ab:
@@ -831,7 +831,7 @@ async def storico_abbonamento(aid: str, user=Depends(current_user)):
     }
 
 
-@api.get("/abbonamenti-per-cliente")
+@router.get("/abbonamenti-per-cliente")
 async def abbonamenti_per_cliente(user=Depends(current_user)):
     """
     Storico abbonamenti raggruppati per cliente (tesserato).
@@ -921,7 +921,7 @@ async def abbonamenti_per_cliente(user=Depends(current_user)):
 # ============================================================
 # LEZIONI (collettive con partecipanti multipli)
 # ============================================================
-@api.get("/lezioni")
+@router.get("/lezioni")
 async def list_lezioni(abbonamento_id: Optional[str] = None, tecnico_id: Optional[str] = None,
                        user=Depends(current_user)):
     q = {}
@@ -935,7 +935,7 @@ async def list_lezioni(abbonamento_id: Optional[str] = None, tecnico_id: Optiona
     return [serialize(d) for d in docs]
 
 
-@api.post("/lezioni")
+@router.post("/lezioni")
 async def create_lezione(payload: LezioneCreate, user=Depends(current_user)):
     if not payload.partecipanti:
         raise HTTPException(status_code=400, detail="Aggiungi almeno un partecipante")
@@ -962,7 +962,7 @@ async def create_lezione(payload: LezioneCreate, user=Depends(current_user)):
     return serialize(doc)
 
 
-@api.delete("/lezioni/{lid}")
+@router.delete("/lezioni/{lid}")
 async def delete_lezione(lid: str, user=Depends(current_user)):
     res = await db.lezioni.delete_one({"_id": oid(lid)})
     if res.deleted_count == 0:
@@ -981,7 +981,7 @@ async def _next_receipt_number(year: int) -> tuple[str, int]:
     return f"{year}/{seq:05d}", seq
 
 
-@api.get("/ricevute")
+@router.get("/ricevute")
 async def list_ricevute(user=Depends(current_user)):
     q = {}
     if user["role"] != "admin":
@@ -990,7 +990,7 @@ async def list_ricevute(user=Depends(current_user)):
     return [serialize(d) for d in docs]
 
 
-@api.post("/ricevute")
+@router.post("/ricevute")
 async def create_ricevuta(payload: RicevutaCreate, user=Depends(current_user)):
     year = datetime.now(timezone.utc).year
     try:
@@ -1038,7 +1038,7 @@ async def create_ricevuta(payload: RicevutaCreate, user=Depends(current_user)):
     return serialize(doc)
 
 
-@api.get("/ricevute/{rid}")
+@router.get("/ricevute/{rid}")
 async def get_ricevuta(rid: str, user=Depends(current_user)):
     doc = await db.ricevute.find_one({"_id": oid(rid)})
     if not doc:
@@ -1048,7 +1048,7 @@ async def get_ricevuta(rid: str, user=Depends(current_user)):
     return serialize(doc)
 
 
-@api.patch("/ricevute/{rid}")
+@router.patch("/ricevute/{rid}")
 async def update_ricevuta(rid: str, payload: RicevutaUpdate, user=Depends(current_user)):
     require_admin(user)
     existing = await db.ricevute.find_one({"_id": oid(rid)})
@@ -1075,7 +1075,7 @@ async def update_ricevuta(rid: str, payload: RicevutaUpdate, user=Depends(curren
     return serialize(doc)
 
 
-@api.delete("/ricevute/{rid}")
+@router.delete("/ricevute/{rid}")
 async def delete_ricevuta(rid: str, user=Depends(current_user)):
     """Physical delete: also decrement counter if this is the last receipt of the year."""
     require_admin(user)
@@ -1111,7 +1111,7 @@ async def _load_org() -> dict:
     return org
 
 
-@api.get("/ricevute/{rid}/pdf")
+@router.get("/ricevute/{rid}/pdf")
 async def ricevuta_pdf(rid: str, user=Depends(current_user)):
     doc = await db.ricevute.find_one({"_id": oid(rid)})
     if not doc:
@@ -1127,7 +1127,7 @@ async def ricevuta_pdf(rid: str, user=Depends(current_user)):
                         headers={"Content-Disposition": f'inline; filename="{filename}"'})
 
 
-@api.post("/ricevute/{rid}/send-email")
+@router.post("/ricevute/{rid}/send-email")
 async def send_ricevuta_email(rid: str, payload: SendReceiptEmail, user=Depends(current_user)):
     doc = await db.ricevute.find_one({"_id": oid(rid)})
     if not doc:
@@ -1187,7 +1187,7 @@ async def send_ricevuta_email(rid: str, payload: SendReceiptEmail, user=Depends(
     return {"ok": True, "email_id": email_id}
 
 
-@api.post("/ricevute/{rid}/mark-whatsapp")
+@router.post("/ricevute/{rid}/mark-whatsapp")
 async def mark_whatsapp(rid: str, user=Depends(current_user)):
     """Track that user sent this receipt via WhatsApp so button changes color."""
     doc = await db.ricevute.find_one({"_id": oid(rid)})
@@ -1201,7 +1201,7 @@ async def mark_whatsapp(rid: str, user=Depends(current_user)):
 
 
 # Public unauthenticated endpoint for downloading a receipt via token
-@api.get("/public/ricevuta/{token}/pdf")
+@router.get("/public/ricevuta/{token}/pdf")
 async def public_ricevuta_pdf(token: str):
     doc = await db.ricevute.find_one({"public_token": token})
     if not doc:
@@ -1217,7 +1217,7 @@ async def public_ricevuta_pdf(token: str):
                         headers={"Content-Disposition": f'inline; filename="{filename}"'})
 
 
-@api.get("/ricevute/{rid}/whatsapp-link")
+@router.get("/ricevute/{rid}/whatsapp-link")
 async def whatsapp_link(rid: str, user=Depends(current_user)):
     doc = await db.ricevute.find_one({"_id": oid(rid)})
     if not doc:
@@ -1284,7 +1284,7 @@ async def _notify_prenotazione(action: str, slot: dict, tesserato: dict, org: di
             logger.warning(f"Failed to send notification to {r}: {e}")
 
 
-@api.get("/calendario")
+@router.get("/calendario")
 async def list_slot(date_from: Optional[str] = None, date_to: Optional[str] = None,
                      tecnico_id: Optional[str] = None, user=Depends(current_user)):
     q = {}
@@ -1295,7 +1295,7 @@ async def list_slot(date_from: Optional[str] = None, date_to: Optional[str] = No
     return [serialize(d) for d in docs]
 
 
-@api.post("/calendario")
+@router.post("/calendario")
 async def create_slot(payload: SlotCreate, user=Depends(current_user)):
     tecnico_id = payload.tecnico_id or user["id"]
     if tecnico_id != user["id"] and user["role"] != "admin":
@@ -1332,7 +1332,7 @@ async def create_slot(payload: SlotCreate, user=Depends(current_user)):
     return {"created": len(docs), "slots": [serialize(d) for d in docs]}
 
 
-@api.patch("/calendario/{sid}")
+@router.patch("/calendario/{sid}")
 async def update_slot(sid: str, payload: SlotUpdate, user=Depends(current_user)):
     slot = await db.slot_calendario.find_one({"_id": oid(sid)})
     if not slot: raise HTTPException(status_code=404, detail="Slot non trovato")
@@ -1343,7 +1343,7 @@ async def update_slot(sid: str, payload: SlotUpdate, user=Depends(current_user))
     return serialize(await db.slot_calendario.find_one({"_id": oid(sid)}))
 
 
-@api.delete("/calendario/{sid}")
+@router.delete("/calendario/{sid}")
 async def delete_slot(sid: str, user=Depends(current_user)):
     slot = await db.slot_calendario.find_one({"_id": oid(sid)})
     if not slot: raise HTTPException(status_code=404, detail="Slot non trovato")
@@ -1353,7 +1353,7 @@ async def delete_slot(sid: str, user=Depends(current_user)):
     return {"ok": True}
 
 
-@api.post("/calendario/prenota")
+@router.post("/calendario/prenota")
 async def prenota_slot(payload: PrenotazioneCreate, background: BackgroundTasks,
                         user=Depends(current_user)):
     slot = await db.slot_calendario.find_one({"_id": oid(payload.slot_id)})
@@ -1378,7 +1378,7 @@ async def prenota_slot(payload: PrenotazioneCreate, background: BackgroundTasks,
     return {"ok": True}
 
 
-@api.delete("/calendario/prenota/{slot_id}/{tesserato_id}")
+@router.delete("/calendario/prenota/{slot_id}/{tesserato_id}")
 async def cancel_prenotazione(slot_id: str, tesserato_id: str,
                                 background: BackgroundTasks,
                                 user=Depends(current_user)):
@@ -1399,7 +1399,7 @@ async def cancel_prenotazione(slot_id: str, tesserato_id: str,
 # ============================================================
 # LIBRO SOCI
 # ============================================================
-@api.get("/libro-soci")
+@router.get("/libro-soci")
 async def libro_soci(anno: Optional[int] = None, user=Depends(current_user)):
     anno = anno or datetime.now(timezone.utc).year
     q = {}
@@ -1435,7 +1435,7 @@ async def libro_soci(anno: Optional[int] = None, user=Depends(current_user)):
     return {"anno": anno, "soci": result}
 
 
-@api.get("/libro-soci/pdf")
+@router.get("/libro-soci/pdf")
 async def libro_soci_pdf(anno: Optional[int] = None, user=Depends(current_user)):
     anno = anno or datetime.now(timezone.utc).year
     resp = await libro_soci(anno=anno, user=user)
@@ -1455,7 +1455,7 @@ async def libro_soci_pdf(anno: Optional[int] = None, user=Depends(current_user))
 # ============================================================
 # EROGAZIONE COMPENSI
 # ============================================================
-@api.post("/compensi/eroga")
+@router.post("/compensi/eroga")
 async def eroga_compenso(payload: ErogaCompenso, user=Depends(current_user)):
     require_admin(user)
     if payload.importo <= 0:
@@ -1486,7 +1486,7 @@ async def eroga_compenso(payload: ErogaCompenso, user=Depends(current_user)):
     return {"ok": True, "movimento": serialize(mv)}
 
 
-@api.get("/compensi/erogati")
+@router.get("/compensi/erogati")
 async def list_compensi_erogati(tecnico_id: Optional[str] = None, user=Depends(current_user)):
     q = {}
     if tecnico_id: q["tecnico_id"] = tecnico_id
@@ -1495,7 +1495,7 @@ async def list_compensi_erogati(tecnico_id: Optional[str] = None, user=Depends(c
     return [serialize(d) for d in docs]
 
 
-@api.patch("/compensi/erogati/{cid}")
+@router.patch("/compensi/erogati/{cid}")
 async def update_compenso_erogato(cid: str, payload: ErogaCompenso,
                                     user=Depends(current_user)):
     require_admin(user)
@@ -1529,7 +1529,7 @@ async def update_compenso_erogato(cid: str, payload: ErogaCompenso,
     return serialize(doc2)
 
 
-@api.delete("/compensi/erogati/{cid}")
+@router.delete("/compensi/erogati/{cid}")
 async def delete_compenso_erogato(cid: str, user=Depends(current_user)):
     require_admin(user)
     doc = await db.compensi_erogati.find_one({"_id": oid(cid)})
@@ -1548,7 +1548,7 @@ async def delete_compenso_erogato(cid: str, user=Depends(current_user)):
 # ============================================================
 # EXPORT EXCEL
 # ============================================================
-@api.get("/export/excel")
+@router.get("/export/excel")
 async def export_excel(user=Depends(current_user)):
     require_admin(user)
     tesserati = [serialize(t) for t in await db.tesserati.find().sort("cognome", 1).to_list(5000)]
@@ -1582,7 +1582,7 @@ async def export_excel(user=Depends(current_user)):
 # ============================================================
 # MOVIMENTI
 # ============================================================
-@api.get("/movimenti")
+@router.get("/movimenti")
 async def list_movimenti(date_from: Optional[str] = None, date_to: Optional[str] = None,
                           metodo: Optional[str] = None, user=Depends(current_user)):
     q = {}
@@ -1598,7 +1598,7 @@ async def list_movimenti(date_from: Optional[str] = None, date_to: Optional[str]
     return [serialize(d) for d in docs]
 
 
-@api.post("/movimenti")
+@router.post("/movimenti")
 async def create_movimento(payload: MovimentoCreate, user=Depends(current_user)):
     require_admin(user)
     doc = payload.model_dump(); doc["created_at"] = now_iso()
@@ -1608,7 +1608,7 @@ async def create_movimento(payload: MovimentoCreate, user=Depends(current_user))
     return serialize(doc)
 
 
-@api.post("/movimenti/giroconto")
+@router.post("/movimenti/giroconto")
 async def create_giroconto(payload: GirocontoCreate, user=Depends(current_user)):
     """Giroconto Cassa ↔ Banca. Crea 2 movimenti collegati (uscita + entrata)
     con la stessa categoria 'Giroconto' e un identificatore comune `giroconto_id`.
@@ -1642,7 +1642,7 @@ async def create_giroconto(payload: GirocontoCreate, user=Depends(current_user))
             "uscita": serialize(out_doc), "entrata": serialize(in_doc)}
 
 
-@api.patch("/movimenti/{mid}")
+@router.patch("/movimenti/{mid}")
 async def update_movimento(mid: str, payload: MovimentoUpdate, user=Depends(current_user)):
     require_admin(user)
     upd = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
@@ -1653,7 +1653,7 @@ async def update_movimento(mid: str, payload: MovimentoUpdate, user=Depends(curr
     return serialize(doc)
 
 
-@api.delete("/movimenti/{mid}")
+@router.delete("/movimenti/{mid}")
 async def delete_movimento(mid: str, user=Depends(current_user)):
     require_admin(user)
     # Se è un giroconto, elimina anche la controparte
@@ -1667,7 +1667,7 @@ async def delete_movimento(mid: str, user=Depends(current_user)):
     return {"ok": True}
 
 
-@api.get("/movimenti/saldi")
+@router.get("/movimenti/saldi")
 async def saldi_cassa_banca(user=Depends(current_user)):
     """Ritorna saldi correnti per Cassa e Banca (tutte le operazioni fino ad oggi)."""
     q = {}
@@ -1701,7 +1701,7 @@ async def saldi_cassa_banca(user=Depends(current_user)):
     }
 
 
-@api.get("/movimenti/rendiconto")
+@router.get("/movimenti/rendiconto")
 async def rendiconto_gestionale(year: int, user=Depends(current_user)):
     """
     Rendiconto Gestionale annuo aggregato per sezione (ASD).
@@ -1768,7 +1768,7 @@ async def _compute_rendiconto(year: int, user):
                         "risultato": r(risultato)}}
 
 
-@api.get("/movimenti/rendiconto/pdf")
+@router.get("/movimenti/rendiconto/pdf")
 async def rendiconto_gestionale_pdf(year: int, user=Depends(current_user)):
     """PDF ufficiale del Rendiconto Gestionale annuale — pronto per Consiglio Direttivo.
     Include:
@@ -1799,7 +1799,7 @@ async def rendiconto_gestionale_pdf(year: int, user=Depends(current_user)):
                                  f'inline; filename="{filename}"'})
 
 
-@api.get("/movimenti/riepilogo-mensile")
+@router.get("/movimenti/riepilogo-mensile")
 async def riepilogo_mensile(year: int, user=Depends(current_user)):
     q = {"data": {"$gte": f"{year}-01-01", "$lte": f"{year}-12-31T23:59:59"}}
     if user["role"] != "admin":
@@ -1834,7 +1834,7 @@ async def _tesserati_ids_for_user(user: dict) -> list[str]:
     return [str(t["_id"]) for t in tess]
 
 
-@api.get("/dashboard")
+@router.get("/dashboard")
 async def dashboard(user=Depends(current_user)):
     now = datetime.now(timezone.utc)
     month_start = f"{now.year:04d}-{now.month:02d}-01"
@@ -1895,7 +1895,7 @@ async def dashboard(user=Depends(current_user)):
             "scadenze_imminenti": [serialize(t) for t in scad]}
 
 
-@api.get("/report/bilancio")
+@router.get("/report/bilancio")
 async def report_bilancio(date_from: str, date_to: str, user=Depends(current_user)):
     q = {"data": {"$gte": date_from, "$lte": date_to + "T23:59:59"}}
     if user["role"] != "admin":
@@ -1907,7 +1907,7 @@ async def report_bilancio(date_from: str, date_to: str, user=Depends(current_use
             "totali": {"entrate": entrate, "uscite": uscite, "saldo": entrate - uscite}}
 
 
-@api.get("/report/bilancio/pdf")
+@router.get("/report/bilancio/pdf")
 async def report_bilancio_pdf(date_from: str, date_to: str, user=Depends(current_user)):
     q = {"data": {"$gte": date_from, "$lte": date_to + "T23:59:59"}}
     if user["role"] != "admin":
@@ -1926,7 +1926,7 @@ async def report_bilancio_pdf(date_from: str, date_to: str, user=Depends(current
 # ============================================================
 # COMPENSI (con esclusione item)
 # ============================================================
-@api.get("/compensi")
+@router.get("/compensi")
 async def compensi(date_from: Optional[str] = None, date_to: Optional[str] = None,
                    user=Depends(current_user)):
     year = datetime.now(timezone.utc).year
@@ -1971,14 +1971,14 @@ async def compensi(date_from: Optional[str] = None, date_to: Optional[str] = Non
 # ============================================================
 # ORGANIZZAZIONE
 # ============================================================
-@api.get("/organizzazione")
+@router.get("/organizzazione")
 async def get_org(user=Depends(current_user)):
     org = await _load_org()
     org["id"] = org.pop("_id", "config")
     return org
 
 
-@api.patch("/organizzazione")
+@router.patch("/organizzazione")
 async def update_org(payload: OrganizzazioneUpdate, user=Depends(current_user)):
     require_admin(user)
     await _load_org()
@@ -1995,13 +1995,13 @@ async def update_org(payload: OrganizzazioneUpdate, user=Depends(current_user)):
 # ============================================================
 # COUNTERS (numerazione ricevute modificabile)
 # ============================================================
-@api.get("/counters/ricevute/{year}")
+@router.get("/counters/ricevute/{year}")
 async def get_counter(year: int, user=Depends(current_user)):
     doc = await db.counters.find_one({"_id": f"ricevute_{year}"})
     return {"year": year, "seq": (doc or {}).get("seq", 0)}
 
 
-@api.patch("/counters/ricevute/{year}")
+@router.patch("/counters/ricevute/{year}")
 async def set_counter(year: int, payload: SetCounter, user=Depends(current_user)):
     require_admin(user)
     await db.counters.update_one({"_id": f"ricevute_{year}"},
@@ -2012,7 +2012,7 @@ async def set_counter(year: int, payload: SetCounter, user=Depends(current_user)
 # ============================================================
 # VERBALI
 # ============================================================
-@api.get("/verbali")
+@router.get("/verbali")
 async def list_verbali(user=Depends(current_user)):
     require_admin(user)
     docs = await db.verbali.find({}).sort("data", -1).to_list(1000)
@@ -2027,7 +2027,7 @@ async def list_verbali(user=Depends(current_user)):
     return result
 
 
-@api.post("/verbali")
+@router.post("/verbali")
 async def create_verbale(payload: VerbaleCreate, user=Depends(current_user)):
     require_admin(user)
     doc = payload.model_dump()
@@ -2038,7 +2038,7 @@ async def create_verbale(payload: VerbaleCreate, user=Depends(current_user)):
     return serialize(doc)
 
 
-@api.get("/verbali/{vid}")
+@router.get("/verbali/{vid}")
 async def get_verbale(vid: str, user=Depends(current_user)):
     require_admin(user)
     doc = await db.verbali.find_one({"_id": oid(vid)})
@@ -2046,7 +2046,7 @@ async def get_verbale(vid: str, user=Depends(current_user)):
     return serialize(doc)
 
 
-@api.patch("/verbali/{vid}")
+@router.patch("/verbali/{vid}")
 async def update_verbale(vid: str, payload: VerbaleUpdate, user=Depends(current_user)):
     require_admin(user)
     upd = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
@@ -2056,7 +2056,7 @@ async def update_verbale(vid: str, payload: VerbaleUpdate, user=Depends(current_
     return serialize(await db.verbali.find_one({"_id": oid(vid)}))
 
 
-@api.delete("/verbali/{vid}")
+@router.delete("/verbali/{vid}")
 async def delete_verbale(vid: str, user=Depends(current_user)):
     require_admin(user)
     res = await db.verbali.delete_one({"_id": oid(vid)})
@@ -2065,7 +2065,7 @@ async def delete_verbale(vid: str, user=Depends(current_user)):
     return {"ok": True}
 
 
-@api.get("/verbali/{vid}/pdf")
+@router.get("/verbali/{vid}/pdf")
 async def verbale_pdf(vid: str, user=Depends(current_user)):
     require_admin(user)
     doc = await db.verbali.find_one({"_id": oid(vid)})
@@ -2080,7 +2080,7 @@ async def verbale_pdf(vid: str, user=Depends(current_user)):
 # ============================================================
 # COMPENSO EROGATO -> PDF (busta paga)
 # ============================================================
-@api.get("/compensi/erogati/{cid}/pdf")
+@router.get("/compensi/erogati/{cid}/pdf")
 async def compenso_pdf(cid: str, user=Depends(current_user)):
     doc = await db.compensi_erogati.find_one({"_id": oid(cid)})
     if not doc:
@@ -2113,7 +2113,7 @@ async def _load_tesserato_by_token(token: str) -> dict:
     return doc
 
 
-@api.get("/portale/{token}")
+@router.get("/portale/{token}")
 async def portale_dashboard(token: str):
     t = await _load_tesserato_by_token(token)
     tid = str(t["_id"])
@@ -2141,7 +2141,7 @@ async def portale_dashboard(token: str):
     }
 
 
-@api.get("/portale/{token}/ricevute")
+@router.get("/portale/{token}/ricevute")
 async def portale_ricevute(token: str):
     t = await _load_tesserato_by_token(token)
     rics = await db.ricevute.find({"tesserato_id": str(t["_id"]),
@@ -2154,7 +2154,7 @@ async def portale_ricevute(token: str):
     } for r in rics]
 
 
-@api.get("/portale/{token}/calendario")
+@router.get("/portale/{token}/calendario")
 async def portale_calendario(token: str):
     t = await _load_tesserato_by_token(token)
     tid = str(t["_id"])
@@ -2179,7 +2179,7 @@ async def _tid_from_token(token: str) -> ObjectId:
     return t["_id"]
 
 
-@api.post("/portale/{token}/prenota")
+@router.post("/portale/{token}/prenota")
 async def portale_prenota(token: str, payload: PortalePrenota, background: BackgroundTasks):
     t = await _load_tesserato_by_token(token)
     slot = await db.slot_calendario.find_one({"_id": oid(payload.slot_id)})
@@ -2202,7 +2202,7 @@ async def portale_prenota(token: str, payload: PortalePrenota, background: Backg
     return {"ok": True}
 
 
-@api.delete("/portale/{token}/prenota/{slot_id}")
+@router.delete("/portale/{token}/prenota/{slot_id}")
 async def portale_cancel(token: str, slot_id: str, background: BackgroundTasks):
     t = await _load_tesserato_by_token(token)
     tid = str(t["_id"])
@@ -2218,7 +2218,7 @@ async def portale_cancel(token: str, slot_id: str, background: BackgroundTasks):
     return {"ok": True}
 
 
-@api.get("/portale/{token}/ricevuta/{rid}/pdf")
+@router.get("/portale/{token}/ricevuta/{rid}/pdf")
 async def portale_ricevuta_pdf(token: str, rid: str):
     t = await _load_tesserato_by_token(token)
     doc = await db.ricevute.find_one({"_id": oid(rid)})
@@ -2295,7 +2295,7 @@ async def _run_solleciti_scadenze():
 # TIPLOGIE TESSERATO
 # -------------------------------
 
-@api.get("/tipologie-tesserato")
+@router.get("/tipologie-tesserato")
 async def list_tipologie_tesserato(user=Depends(current_user)):
     items = list(db["tipologie_tesserato"].find({}))
     for x in items:
@@ -2303,21 +2303,21 @@ async def list_tipologie_tesserato(user=Depends(current_user)):
     return items
 
 
-@api.post("/tipologie-tesserato")
+@router.post("/tipologie-tesserato")
 async def create_tipologia_tesserato(payload: TipologiaTesseratoCreate, user=Depends(current_user)):
     data = payload.dict()
     db["tipologie_tesserato"].insert_one(data)
     return {"ok": True}
 
 
-@api.put("/tipologie-tesserato/{id}")
+@router.put("/tipologie-tesserato/{id}")
 async def update_tipologia_tesserato(id: str, payload: TipologiaTesseratoUpdate, user=Depends(current_user)):
     update_data = {k: v for k, v in payload.dict().items() if v is not None}
     db["tipologie_tesserato"].update_one({"_id": oid(id)}, {"$set": update_data})
     return {"ok": True}
 
 
-@api.delete("/tipologie-tesserato/{id}")
+@router.delete("/tipologie-tesserato/{id}")
 async def delete_tipologia_tesserato(id: str, user=Depends(current_user)):
     db["tipologie_tesserato"].delete_one({"_id": oid(id)})
     return {"ok": True}
@@ -2327,7 +2327,7 @@ async def delete_tipologia_tesserato(id: str, user=Depends(current_user)):
 # TIPLOGIE RIMBORSO
 # -------------------------------
 
-@api.get("/tipologie-rimborso")
+@router.get("/tipologie-rimborso")
 async def list_tipologie_rimborso(user=Depends(current_user)):
     items = list(db["tipologie_rimborso"].find({}))
     for x in items:
@@ -2335,26 +2335,26 @@ async def list_tipologie_rimborso(user=Depends(current_user)):
     return items
 
 
-@api.post("/tipologie-rimborso")
+@router.post("/tipologie-rimborso")
 async def create_tipologia_rimborso(payload: TipologiaRimborsoCreate, user=Depends(current_user)):
     data = payload.dict()
     db["tipologie_rimborso"].insert_one(data)
     return {"ok": True}
 
 
-@api.put("/tipologie-rimborso/{id}")
+@router.put("/tipologie-rimborso/{id}")
 async def update_tipologia_rimborso(id: str, payload: TipologiaRimborsoUpdate, user=Depends(current_user)):
     update_data = {k: v for k, v in payload.dict().items() if v is not None}
     db["tipologie_rimborso"].update_one({"_id": oid(id)}, {"$set": update_data})
     return {"ok": True}
 
 
-@api.delete("/tipologie-rimborso/{id}")
+@router.delete("/tipologie-rimborso/{id}")
 async def delete_tipologia_rimborso(id: str, user=Depends(current_user)):
     db["tipologie_rimborso"].delete_one({"_id": oid(id)})
     return {"ok": True}
 
-@api.post("/cron/solleciti-scadenze")
+@router.post("/cron/solleciti-scadenze")
 async def cron_solleciti(request: Request, background: BackgroundTasks):
     # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
     import hmac
@@ -2439,3 +2439,5 @@ import uvicorn
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("backend.server:app", host="0.0.0.0", port=port)
+# Esporta il router
+__all__ = ["router"]
