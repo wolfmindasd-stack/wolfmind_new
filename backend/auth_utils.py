@@ -4,7 +4,10 @@ import bcrypt
 import jwt
 from datetime import datetime, timezone, timedelta
 from bson import ObjectId
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, APIRouter
+
+# FastAPI router
+router = APIRouter()
 
 JWT_ALGORITHM = "HS256"
 
@@ -92,3 +95,9 @@ async def get_current_user_from_db(request: Request, db) -> dict:
 def require_admin(user: dict):
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Accesso riservato agli amministratori")
+
+
+# --- Example endpoint to verify router works ---
+@router.get("/me")
+async def me():
+    return {"detail": "Not authenticated"}
