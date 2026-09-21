@@ -18,7 +18,7 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 
-from models import (UserCreate, UserLogin, UserUpdate, TesseratoCreate, TesseratoUpdate,
+from backend.models import (UserCreate, UserLogin, UserUpdate, TesseratoCreate, TesseratoUpdate,
                      TipoPacchettoCreate, TipoPacchettoUpdate, AbbonamentoCreate,
                      AbbonamentoUpdate,
                      LezioneCreate, RicevutaCreate, RicevutaUpdate, MovimentoCreate,
