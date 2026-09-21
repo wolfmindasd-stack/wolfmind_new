@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Importa i router del tuo backend
 from backend.server import router as server_router
-from auth_utils import router as auth_router
+from backend.auth_utils import router as auth_router
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
