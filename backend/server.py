@@ -29,14 +29,14 @@ from backend.models import (UserCreate, UserLogin, UserUpdate, TesseratoCreate, 
                      TipologiaTesseratoCreate, TipologiaTesseratoUpdate,
                      TipologiaRimborsoCreate, TipologiaRimborsoUpdate,
                      RimborsoCreate, RimborsoUpdate, now_iso)
-from auth_utils import (hash_password, verify_password, create_access_token,
+from backend.auth_utils import (hash_password, verify_password, create_access_token,
                          create_refresh_token, set_auth_cookies, clear_auth_cookies,
                          get_current_user_from_db, require_admin)
-from pdf_utils import (generate_receipt_pdf, generate_balance_report_pdf,
+from backend.pdf_utils import (generate_receipt_pdf, generate_balance_report_pdf,
                         generate_libro_soci_pdf, generate_verbale_pdf, generate_compenso_pdf,
                         generate_rimborso_pdf, generate_rendiconto_pdf)
-from email_utils import send_email_with_attachment
-from excel_utils import generate_backup_xlsx
+from backend.email_utils import send_email_with_attachment
+from backend.excel_utils import generate_backup_xlsx
 
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
