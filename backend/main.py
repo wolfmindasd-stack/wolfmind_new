@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Importa i router del tuo backend
-from server import router as server_router
+from backend.server import router as server_router
 from auth_utils import router as auth_router
 
 app = FastAPI()
