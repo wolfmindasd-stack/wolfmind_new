@@ -219,4 +219,3 @@ def update_avatar(file: UploadFile = File(...)):
     session.commit()
 
     return {"ok": True}
-
