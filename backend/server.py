@@ -1,14 +1,21 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from datetime import datetime, timedelta
+
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, Column, Integer, String
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import create_engine, Column, Integer, String, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base
 import shutil
+import jwt
 
 # ---------------------------------------------------------
-# DATABASE
+# CONFIG
 # ---------------------------------------------------------
 
 DATABASE_URL = "sqlite:///wolfmind.db"
+JWT_SECRET = "super-secret-wolfmind-key"
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRE_MINUTES = 60
 
 engine = create_engine(
     DATABASE_URL,
@@ -46,6 +53,16 @@ class Profilo(Base):
     password = Column(String)
 
 
+class Abbonamento(Base):
+    __tablename__ = "abbonamenti"
+    id = Column(Integer, primary_key=True, index=True)
+    socio_id = Column(Integer)
+    tipo = Column(String)
+    stato = Column(String)
+    data_inizio = Column(DateTime)
+    data_fine = Column(DateTime)
+
+
 Base.metadata.create_all(bind=engine)
 
 
@@ -64,12 +81,28 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://wolfmind-new.pages.dev",
-        "https://bfc432bf.wolfmind-new.pages.dev"
+        "https://bfc432bf.wolfmind-new.pages.dev",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ---------------------------------------------------------
+# UTILS AUTH
+# ---------------------------------------------------------
+
+def create_token(user_id: int):
+    expire = datetime.utcnow() + timedelta(minutes=JWT_EXPIRE_MINUTES)
+    payload = {"sub": str(user_id), "exp": expire}
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def get_current_user(token: str = Depends(lambda: None)):
+    # Il frontend usa cookie, quindi qui normalmente leggeresti da header/cookie.
+    # Per semplicità, questa funzione non viene usata direttamente nelle route.
+    return None
 
 
 # ---------------------------------------------------------
@@ -82,7 +115,7 @@ def root():
 
 
 # ---------------------------------------------------------
-# SOCI
+# SOCI / TESSERATI
 # ---------------------------------------------------------
 
 @app.get("/soci")
@@ -116,6 +149,30 @@ def add_socio(data: dict):
     session.refresh(s)
 
     return {"ok": True, "id": s.id}
+
+
+@app.get("/tesserati")
+def tesserati():
+    session = db()
+    soci = session.query(Soci).all()
+    return [
+        {
+            "id": s.id,
+            "nome": s.nome,
+            "cognome": s.cognome,
+            "email": s.email,
+        }
+        for s in soci
+    ]
+
+
+@app.get("/tipologie-tesserato")
+def tipologie_tesserato():
+    return [
+        {"id": 1, "nome": "Base"},
+        {"id": 2, "nome": "Premium"},
+        {"id": 3, "nome": "Agonista"},
+    ]
 
 
 # ---------------------------------------------------------
@@ -157,7 +214,53 @@ def update_avatar(file: UploadFile = File(...)):
 
 
 # ---------------------------------------------------------
-# LOGIN
+# ABBONAMENTI (SEMPLICE)
+# ---------------------------------------------------------
+
+@app.get("/abbonamenti")
+def get_abbonamenti():
+    session = db()
+    abbs = session.query(Abbonamento).all()
+    return [
+        {
+            "id": a.id,
+            "socio_id": a.socio_id,
+            "tipo": a.tipo,
+            "stato": a.stato,
+            "data_inizio": a.data_inizio,
+            "data_fine": a.data_fine,
+        }
+        for a in abbs
+    ]
+
+
+@app.post("/abbonamenti")
+def add_abbonamento(data: dict):
+    socio_id = data.get("socio_id")
+    tipo = data.get("tipo", "Mensile")
+    stato = data.get("stato", "attivo")
+
+    if not socio_id:
+        raise HTTPException(status_code=400, detail="socio_id mancante")
+
+    session = db()
+    now = datetime.utcnow()
+    a = Abbonamento(
+        socio_id=socio_id,
+        tipo=tipo,
+        stato=stato,
+        data_inizio=now,
+        data_fine=now + timedelta(days=30),
+    )
+    session.add(a)
+    session.commit()
+    session.refresh(a)
+
+    return {"ok": True, "id": a.id}
+
+
+# ---------------------------------------------------------
+# AUTH (LOGIN / ME)
 # ---------------------------------------------------------
 
 @app.post("/api/auth/login")
@@ -177,6 +280,8 @@ def login(data: dict):
     if user.password != password:
         raise HTTPException(status_code=401, detail="Password errata")
 
+    token = create_token(user.id)
+
     return {
         "id": user.id,
         "nome": user.nome,
@@ -184,6 +289,8 @@ def login(data: dict):
         "telefono": user.telefono,
         "ruolo": user.ruolo,
         "avatar_url": user.avatar_url,
+        "access_token": token,
+        "token_type": "bearer",
     }
 
 
@@ -201,41 +308,24 @@ def auth_me():
         "email": p.email,
         "telefono": p.telefono,
         "ruolo": p.ruolo,
-        "avatar_url": p.avatar_url
+        "avatar_url": p.avatar_url,
     }
 
 
 # ---------------------------------------------------------
-# ROUTE FRONTEND (EVITANO 404)
+# DASHBOARD
 # ---------------------------------------------------------
 
 @app.get("/dashboard")
 def dashboard():
-    return {"ok": True, "message": "Dashboard attiva"}
-
-
-@app.get("/tesserati")
-def tesserati():
     session = db()
-    soci = session.query(Soci).all()
-    return [
-        {
-            "id": s.id,
-            "nome": s.nome,
-            "cognome": s.cognome,
-            "email": s.email,
-        }
-        for s in soci
-    ]
-
-
-@app.get("/tipologie-tesserato")
-def tipologie_tesserato():
-    return [
-        {"id": 1, "nome": "Base"},
-        {"id": 2, "nome": "Premium"},
-        {"id": 3, "nome": "Agonista"},
-    ]
+    soci_count = session.query(Soci).count()
+    abbs_count = session.query(Abbonamento).count()
+    return {
+        "ok": True,
+        "soci": soci_count,
+        "abbonamenti": abbs_count,
+    }
 
 
 # ---------------------------------------------------------
