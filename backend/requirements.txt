@@ -5,3 +5,4 @@ sqlalchemy
 python-multipart
 pydantic
 jinja2
+PyJWT==2.8.0
