@@ -213,6 +213,23 @@ def update_avatar(file: UploadFile = File(...)):
     path = f"uploads/{file.filename}"
     with open(path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+        @app.get("/dashboard")
+def dashboard():
+    return {"ok": True, "message": "Dashboard attiva"}
+
+@app.get("/tesserati")
+def get_tesserati():
+    session = db()
+    soci = session.query(Soci).all()
+    return [s.__dict__ for s in soci]
+
+@app.get("/tipologie-tesserato")
+def get_tipologie_tesserato():
+    return [
+        {"id": 1, "nome": "Base"},
+        {"id": 2, "nome": "Premium"},
+        {"id": 3, "nome": "Agonista"}
+    ]
 @app.post("/api/auth/login")
 def login(data: dict):
     email = data.get("email")
