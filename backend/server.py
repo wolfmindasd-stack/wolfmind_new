@@ -157,7 +157,7 @@ def update_avatar(file: UploadFile = File(...)):
 
 
 # ---------------------------------------------------------
-# LOGIN MINIMO
+# LOGIN
 # ---------------------------------------------------------
 
 @app.post("/api/auth/login")
@@ -186,6 +186,7 @@ def login(data: dict):
         "avatar_url": user.avatar_url,
     }
 
+
 @app.get("/api/auth/me")
 def auth_me():
     session = db()
@@ -202,6 +203,7 @@ def auth_me():
         "ruolo": p.ruolo,
         "avatar_url": p.avatar_url
     }
+
 
 # ---------------------------------------------------------
 # ROUTE FRONTEND (EVITANO 404)
