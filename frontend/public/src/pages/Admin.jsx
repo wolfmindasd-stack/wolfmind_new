@@ -45,7 +45,7 @@ function TipologieTab() {
   const [nuovoNome, setNuovoNome] = useState("");
 
   const load = async () => {
-    const { data } = await api.get("/tipologie-tesserato");
+    const { data } = await api.get("/api/tipologie-tesserato");   // <── CORRETTO
     setList(data);
   };
   useEffect(() => { load(); }, []);
@@ -53,27 +53,48 @@ function TipologieTab() {
   const add = async () => {
     if (!nuovoNome.trim()) return;
     try {
-      await api.post("/tipologie-tesserato",
+      await api.post("/api/tipologie-tesserato",                 // <── CORRETTO
         { nome: nuovoNome.trim(), attivo: true });
-      setNuovoNome(""); toast.success("Tipologia aggiunta"); load();
-    } catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail)); }
+      setNuovoNome("");
+      toast.success("Tipologia aggiunta");
+      load();
+    } catch (e) {
+      toast.error(formatApiErrorDetail(e.response?.data?.detail));
+    }
   };
+
   const toggle = async (t) => {
-    try { await api.patch(`/tipologie-tesserato/${t.id}`, { attivo: !t.attivo }); load(); }
-    catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail)); }
+    try {
+      await api.patch(`/api/tipologie-tesserato/${t.id}`,        // <── CORRETTO
+        { attivo: !t.attivo });
+      load();
+    } catch (e) {
+      toast.error(formatApiErrorDetail(e.response?.data?.detail));
+    }
   };
+
   const rename = async (t) => {
     const nome = window.prompt("Nuovo nome tipologia:", t.nome);
     if (!nome || nome.trim() === t.nome) return;
-    try { await api.patch(`/tipologie-tesserato/${t.id}`, { nome: nome.trim() });
-          toast.success("Rinominata"); load(); }
-    catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail)); }
+    try {
+      await api.patch(`/api/tipologie-tesserato/${t.id}`,        // <── CORRETTO
+        { nome: nome.trim() });
+      toast.success("Rinominata");
+      load();
+    } catch (e) {
+      toast.error(formatApiErrorDetail(e.response?.data?.detail));
+    }
   };
+
   const del = async (t) => {
     if (!window.confirm(`Eliminare la tipologia "${t.nome}"?`)) return;
-    try { await api.delete(`/tipologie-tesserato/${t.id}`);
-          toast.success("Eliminata"); load(); }
-    catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail)); }
+    try {
+      await api.delete(`/api/tipologie-tesserato/${t.id}`);      // <── CORRETTO
+      toast.success("Eliminata");
+      load();
+    } catch (e) {
+      toast.error(formatApiErrorDetail(e.response?.data?.detail));
+    }
   };
 
   return (
@@ -82,56 +103,57 @@ function TipologieTab() {
         Categorie disponibili nel menu "Tipologia" del form Tesserato (Atleta, Tecnico, Altro…).
         Aggiungi, rinomina o disattiva le voci in base alle esigenze dell'associazione.
       </div>
+
       <div className="flex gap-2">
-        <Input value={nuovoNome} onChange={(e) => setNuovoNome(e.target.value)}
-          placeholder="Nome tipologia (es. Genitore, Collaboratore…)"
-          data-testid="tipologia-nuovo-nome"
-          className="bg-black/40 border-white/10" />
-        <Button onClick={add} className="bg-[#007AFF] hover:bg-[#005BB5]"
-          data-testid="add-tipologia-btn">
-          <Plus size={16} className="mr-1" /> Aggiungi
-        </Button>
+        <input
+          type="text"
+          value={nuovoNome}
+          onChange={(e) => setNuovoNome(e.target.value)}
+          placeholder="Nuova tipologia…"
+          className="px-3 py-2 rounded bg-white/10 text-white flex-1"
+        />
+        <button
+          onClick={add}
+          className="px-4 py-2 bg-[#007AFF] text-white rounded"
+        >
+          Aggiungi
+        </button>
       </div>
-      <div className="wm-card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-white/[0.02] border-b border-white/10">
-            <tr className="text-left">
-              <th className="p-3 wm-label">Nome</th>
-              <th className="p-3 wm-label text-center">Attivo</th>
-              <th className="p-3 wm-label text-right">Azioni</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((t) => (
-              <tr key={t.id} className="border-b border-white/5"
-                data-testid={`tipologia-row-${t.id}`}>
-                <td className="p-3 font-medium">{t.nome}</td>
-                <td className="p-3 text-center">
-                  <Switch checked={t.attivo !== false}
-                    onCheckedChange={() => toggle(t)}
-                    data-testid={`tipologia-toggle-${t.id}`} />
-                </td>
-                <td className="p-3 text-right">
-                  <Button size="sm" variant="ghost" onClick={() => rename(t)}
-                    data-testid={`tipologia-edit-${t.id}`}>
-                    <Pencil size={14} />
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => del(t)}
-                    className="text-[#FF3B30]" data-testid={`tipologia-del-${t.id}`}>
-                    <Trash2 size={14} />
-                  </Button>
-                </td>
-              </tr>
-            ))}
-            {list.length === 0 && (
-              <tr><td colSpan={3} className="p-6 text-center text-white/40">Nessuna tipologia definita</td></tr>
-            )}
-          </tbody>
-        </table>
+
+      <div className="space-y-2">
+        {list.map((t) => (
+          <div
+            key={t.id}
+            className="p-3 bg-white/10 rounded flex items-center justify-between"
+          >
+            <div className="text-white">{t.nome}</div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => toggle(t)}
+                className="text-xs px-2 py-1 bg-white/20 rounded text-white"
+              >
+                {t.attivo ? "Disattiva" : "Attiva"}
+              </button>
+              <button
+                onClick={() => rename(t)}
+                className="text-xs px-2 py-1 bg-white/20 rounded text-white"
+              >
+                Rinomina
+              </button>
+              <button
+                onClick={() => del(t)}
+                className="text-xs px-2 py-1 bg-red-500/70 rounded text-white"
+              >
+                Elimina
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
+
 
 
 function TipologieRimborsoTab() {
