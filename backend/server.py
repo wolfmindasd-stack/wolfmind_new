@@ -222,6 +222,21 @@ def get_profilo():
         "avatar_url": p.avatar_url,
     }
 
+@app.post("/profilo")
+def create_profilo(data: dict):
+    session = db()
+    p = Profilo(
+        nome=data.get("nome"),
+        email=data.get("email"),
+        telefono=data.get("telefono"),
+        ruolo=data.get("ruolo"),
+        avatar_url=data.get("avatar_url"),
+        password=data.get("password")
+    )
+    session.add(p)
+    session.commit()
+    session.refresh(p)
+    return {"ok": True, "id": p.id}
 
 @app.patch("/profilo/avatar")
 def update_avatar(file: UploadFile = File(...)):
