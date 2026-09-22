@@ -183,6 +183,22 @@ def login(data: dict):
         "avatar_url": user.avatar_url,
     }
 
+@app.get("/api/auth/me")
+def auth_me():
+    session = db()
+    p = session.query(Profilo).first()
+
+    if not p:
+        raise HTTPException(status_code=404, detail="Profilo non trovato")
+
+    return {
+        "id": p.id,
+        "nome": p.nome,
+        "email": p.email,
+        "telefono": p.telefono,
+        "ruolo": p.ruolo,
+        "avatar_url": p.avatar_url
+    }
 
 # ---------------------------------------------------------
 # ROUTE FRONTEND (EVITANO 404)
