@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { api, fmtEur, fmtDate, API } from "../lib/api";
+import { api, fmtEur, fmtDate } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Download, RefreshCw } from "lucide-react";
 
