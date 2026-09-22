@@ -7,42 +7,53 @@ const AuthCtx = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
+  // Carica utente al caricamento dell'app
   useEffect(() => {
     (async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
+        // Leggi profilo salvato
+        const profilo = JSON.parse(localStorage.getItem("profilo"));
+
+        if (!profilo || !profilo.id) {
           setUser(false);
           return;
         }
 
-        const token = localStorage.getItem("token");
-if (!token) {
-  setUser(false);
-  return;
-}
-
-const { data } = await api.get(`/api/auth/me?id=${token}`);
-setUser(data);
-
-      } catch {
+        // Chiamata corretta con ID
+        const { data } = await api.get(`/api/auth/me?id=${profilo.id}`);
+        setUser(data);
+      } catch (err) {
+        console.error("Errore /api/auth/me:", err);
         setUser(false);
       }
     })();
   }, []);
 
+  // LOGIN
   const login = async (email, password) => {
-    const { data } = await api.post("/api/auth/login", { email, password });
-    localStorage.setItem("token", data.access_token);
-    setUser(data.user);
-    return data.user;
+    try {
+      const { data } = await api.post("/api/auth/login", { email, password });
+
+      // Salva il profilo completo
+      localStorage.setItem("profilo", JSON.stringify(data));
+
+      // Imposta utente
+      setUser(data);
+
+      return data;
+    } catch (err) {
+      console.error("Errore login:", err);
+      throw err;
+    }
   };
 
+  // LOGOUT
   const logout = async () => {
     try {
       await api.post("/api/auth/logout");
     } catch {}
-    localStorage.removeItem("token");
+
+    localStorage.removeItem("profilo");
     setUser(false);
   };
 
