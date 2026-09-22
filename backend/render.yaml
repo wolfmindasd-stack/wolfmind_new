@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: wolfmind_new-backend
+    env: python
+    region: frankfurt
+    plan: starter
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: gunicorn server:app -k uvicorn.workers.UvicornWorker --chdir backend
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
