@@ -18,8 +18,8 @@ export default function Login() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            email: email,
-            password: password,
+            email,
+            password,
           }),
         }
       );
@@ -31,10 +31,10 @@ export default function Login() {
         return;
       }
 
-      // Salva il profilo
+      // Salva il profilo completo
       localStorage.setItem("profilo", JSON.stringify(data));
 
-      // Reindirizza alla dashboard
+      // Vai alla dashboard
       window.location.href = "/admin";
     } catch (err) {
       console.error(err);
