@@ -142,8 +142,35 @@ export default function Tesserati() {
         </button>
       </div>
 
-      <input
+           <input
         type="text"
         placeholder="Cerca…"
         value={search}
-        onChange
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full px-4 py-2 rounded-lg bg-white/10 text-white"
+      />
+
+      <div className="space-y-2">
+        {filtered.map((t) => (
+          <div
+            key={t.id}
+            className="p-4 bg-white/10 rounded-lg hover:bg-white/20 transition cursor-pointer"
+            onClick={() => openEdit(t)}
+          >
+            <div className="font-medium text-white">
+              {t.cognome} {t.nome}
+            </div>
+            <div className="text-xs text-white/50">
+              {t.email} · {t.telefono}
+            </div>
+            <div className="text-xs text-white/50">
+              Tesseramento: {fmtDate(t.scadenza_tesseramento)}
+              {" · "}
+              Visita: {fmtDate(t.scadenza_visita_medica)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
