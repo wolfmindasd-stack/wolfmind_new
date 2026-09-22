@@ -1,261 +1,77 @@
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from models import SessionLocal, Soci, Ricevute, Quote, Movimenti, Documenti, Calendario, Notifiche, Impostazioni, Profilo
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 import shutil
-import os
+
+# ---------------------------------------------------------
+# DATABASE
+# ---------------------------------------------------------
+
+engine = create_engine("sqlite:///wolfmind.db", connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(bind=engine)
+
+def db():
+    return SessionLocal()
+
+# ---------------------------------------------------------
+# MODELLI (MINIMI PER EVITARE ERRORI)
+# ---------------------------------------------------------
+
+from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, Integer, String
+
+Base = declarative_base()
+
+class Soci(Base):
+    __tablename__ = "soci"
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String)
+    cognome = Column(String)
+    email = Column(String)
+
+class Profilo(Base):
+    __tablename__ = "profilo"
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String)
+    email = Column(String)
+    telefono = Column(String)
+    ruolo = Column(String)
+    avatar_url = Column(String)
+    password = Column(String)
+
+Base.metadata.create_all(bind=engine)
+
+# ---------------------------------------------------------
+# APP
+# ---------------------------------------------------------
 
 app = FastAPI()
 
 # ---------------------------------------------------------
 # CORS
 # ---------------------------------------------------------
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://wolfmind-new.pages.dev"],
+    allow_origin_regex=r"https://.*\.wolfmind-new\.pages\.dev",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # ---------------------------------------------------------
-# DB SESSION
+# ROUTE BASE
 # ---------------------------------------------------------
-def db():
-    return SessionLocal()
 
-# ---------------------------------------------------------
-# SOCI — SOLO SOCI IN REGOLA
-# ---------------------------------------------------------
+@app.get("/")
+def root():
+    return {"ok": True, "message": "WolfMind backend attivo"}
+
 @app.get("/soci")
 def get_soci():
     session = db()
     soci = session.query(Soci).all()
-    ricevute = session.query(Ricevute).all()
+    return [{"id": s.id, "nome": s.nome, "cognome": s.cognome, "email": s.email} for s in soci]
 
-    soci_in_regola = [
-        s for s in soci
-        if any(
-            r.persona_id == s.id and (
-                r.tipo in ["quota sociale", "tesseramento"] or r.importo > 0
-            )
-            for r in ricevute
-        )
-    ]
-
-    return soci_in_regola
-
-# ---------------------------------------------------------
-# QUOTE
-# ---------------------------------------------------------
-@app.get("/quote")
-def get_quote():
-    session = db()
-    return session.query(Quote).all()
-
-@app.post("/quote")
-def new_quota(
-    socio_id: int = Form(...),
-    anno: int = Form(...),
-    importo: float = Form(...)
-):
-    session = db()
-    q = Quote(socio_id=socio_id, anno=anno, importo=importo, pagata=False)
-    session.add(q)
-    session.commit()
-    return {"ok": True}
-
-@app.patch("/quote/{id}")
-def update_quota(id: int, pagata: bool = Form(...)):
-    session = db()
-    q = session.query(Quote).get(id)
-    q.pagata = pagata
-    session.commit()
-    return {"ok": True}
-
-@app.delete("/quote/{id}")
-def delete_quota(id: int):
-    session = db()
-    q = session.query(Quote).get(id)
-    session.delete(q)
-    session.commit()
-    return {"ok": True}
-
-# ---------------------------------------------------------
-# RICEVUTE
-# ---------------------------------------------------------
-@app.get("/ricevute")
-def get_ricevute():
-    session = db()
-    return session.query(Ricevute).all()
-
-# ---------------------------------------------------------
-# MOVIMENTI
-# ---------------------------------------------------------
-@app.get("/movimenti")
-def get_movimenti():
-    session = db()
-    return session.query(Movimenti).all()
-
-# ---------------------------------------------------------
-# DOCUMENTI
-# ---------------------------------------------------------
-@app.get("/documenti")
-def get_documenti():
-    session = db()
-    return session.query(Documenti).all()
-
-@app.post("/documenti")
-def upload_documento(
-    nome: str = Form(...),
-    categoria: str = Form(...),
-    file: UploadFile = File(...)
-):
-    path = f"uploads/{file.filename}"
-    with open(path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    session = db()
-    d = Documenti(nome=nome, categoria=categoria, file_path=path)
-    session.add(d)
-    session.commit()
-
-    return {"ok": True}
-
-@app.get("/documenti/{id}/download")
-def download_documento(id: int):
-    session = db()
-    d = session.query(Documenti).get(id)
-    return FileResponse(d.file_path)
-
-@app.delete("/documenti/{id}")
-def delete_documento(id: int):
-    session = db()
-    d = session.query(Documenti).get(id)
-    if os.path.exists(d.file_path):
-        os.remove(d.file_path)
-    session.delete(d)
-    session.commit()
-    return {"ok": True}
-
-# ---------------------------------------------------------
-# CALENDARIO
-# ---------------------------------------------------------
-@app.get("/calendario")
-def get_calendario():
-    session = db()
-    return session.query(Calendario).all()
-
-# ---------------------------------------------------------
-# NOTIFICHE
-# ---------------------------------------------------------
-@app.get("/notifiche")
-def get_notifiche():
-    session = db()
-    return session.query(Notifiche).all()
-
-@app.patch("/notifiche/{id}/letto")
-def segna_letta(id: int):
-    session = db()
-    n = session.query(Notifiche).get(id)
-    n.letta = True
-    session.commit()
-    return {"ok": True}
-
-@app.delete("/notifiche/{id}")
-def delete_notifica(id: int):
-    session = db()
-    n = session.query(Notifiche).get(id)
-    session.delete(n)
-    session.commit()
-    return {"ok": True}
-
-# ---------------------------------------------------------
-# PROFILO
-# ---------------------------------------------------------
-@app.get("/profilo")
-def get_profilo():
-    session = db()
-    return session.query(Profilo).first()
-
-@app.patch("/profilo")
-def update_profilo(
-    nome: str = Form(...),
-    email: str = Form(...),
-    telefono: str = Form(...)
-):
-    session = db()
-    p = session.query(Profilo).first()
-    p.nome = nome
-    p.email = email
-    p.telefono = telefono
-    session.commit()
-    return {"ok": True}
-
-@app.patch("/profilo/password")
-def update_password(
-    attuale: str = Form(...),
-    nuova: str = Form(...)
-):
-    session = db()
-    p = session.query(Profilo).first()
-
-    if p.password != attuale:
-        return {"error": "Password errata"}
-
-    p.password = nuova
-    session.commit()
-    return {"ok": True}
-
-@app.patch("/profilo/avatar")
-@app.patch("/profilo/avatar")
-def update_avatar(file: UploadFile = File(...)):
-    path = f"uploads/{file.filename}"
-    with open(path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-      @app.get("/dashboard")
-def dashboard():
-    return {"ok": True, "message": "Dashboard attiva"}
-
-@app.get("/tesserati")
-def get_tesserati():
-    session = db()
-    soci = session.query(Soci).all()
-    return [s.__dict__ for s in soci]
-
-@app.get("/tipologie-tesserato")
-def get_tipologie_tesserato():
-    return [
-        {"id": 1, "nome": "Base"},
-        {"id": 2, "nome": "Premium"},
-        {"id": 3, "nome": "Agonista"}
-    ]
-@app.post("/api/auth/login")
-def login(data: dict):
-    email = data.get("email")
-    password = data.get("password")
-
-    session = db()
-    user = session.query(Profilo).filter_by(email=email).first()
-
-    if not user:
-        return {"error": "Email non trovata"}, 404
-
-    if user.password != password:
-        return {"error": "Password errata"}, 401
-
-    return {
-        "id": user.id,
-        "nome": user.nome,
-        "email": user.email,
-        "telefono": user.telefono,
-        "ruolo": user.ruolo,
-        "avatar_url": user.avatar_url
-    }
-
-    session = db()
-    p = session.query(Profilo).first()
-    p.avatar_url = path
-    session.commit()
-
-    return {"ok": True}
+@app.post
