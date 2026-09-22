@@ -16,8 +16,15 @@ export function AuthProvider({ children }) {
           return;
         }
 
-        const { data } = await api.get("/api/auth/me");
-        setUser(data);
+        const token = localStorage.getItem("token");
+if (!token) {
+  setUser(false);
+  return;
+}
+
+const { data } = await api.get(`/api/auth/me?id=${token}`);
+setUser(data);
+
       } catch {
         setUser(false);
       }
