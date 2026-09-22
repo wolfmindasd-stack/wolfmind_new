@@ -213,7 +213,7 @@ def update_avatar(file: UploadFile = File(...)):
     path = f"uploads/{file.filename}"
     with open(path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-        @app.get("/dashboard")
+      @app.get("/dashboard")
 def dashboard():
     return {"ok": True, "message": "Dashboard attiva"}
 
