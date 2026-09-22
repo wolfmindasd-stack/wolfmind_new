@@ -213,6 +213,28 @@ def update_avatar(file: UploadFile = File(...)):
     path = f"uploads/{file.filename}"
     with open(path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+@app.post("/api/auth/login")
+def login(data: dict):
+    email = data.get("email")
+    password = data.get("password")
+
+    session = db()
+    user = session.query(Profilo).filter_by(email=email).first()
+
+    if not user:
+        return {"error": "Email non trovata"}, 404
+
+    if user.password != password:
+        return {"error": "Password errata"}, 401
+
+    return {
+        "id": user.id,
+        "nome": user.nome,
+        "email": user.email,
+        "telefono": user.telefono,
+        "ruolo": user.ruolo,
+        "avatar_url": user.avatar_url
+    }
 
     session = db()
     p = session.query(Profilo).first()
