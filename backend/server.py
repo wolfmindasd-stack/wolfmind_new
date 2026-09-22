@@ -124,9 +124,9 @@ def login(data: dict):
 
 
 @app.get("/api/auth/me")
-def auth_me():
+def auth_me(id: int):
     session = db()
-    p = session.query(Profilo).first()
+    p = session.query(Profilo).filter_by(id=id).first()
 
     if not p:
         raise HTTPException(status_code=404, detail="Profilo non trovato")
@@ -139,6 +139,7 @@ def auth_me():
         "ruolo": p.ruolo,
         "avatar_url": p.avatar_url
     }
+
 
 
 # ---------------------------------------------------------
