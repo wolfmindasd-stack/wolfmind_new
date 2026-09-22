@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { api } from "../lib/api";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -11,20 +10,35 @@ export default function Login() {
     setError("");
 
     try {
-      const response = await api.post("/auth/login", {
-        email,
-        password,
-      });
+      const response = await fetch(
+        "https://wolfmind-new-backend.onrender.com/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: email,
+            password: password,
+          }),
+        }
+      );
 
-      // Salva il token JWT
-      const token = response.data.access_token;
-      localStorage.setItem("token", token);
+      const data = await response.json();
 
-      // Reindirizza al gestionale
+      if (!response.ok) {
+        setError(data.detail || "Errore di login");
+        return;
+      }
+
+      // Salva il profilo
+      localStorage.setItem("profilo", JSON.stringify(data));
+
+      // Reindirizza alla dashboard
       window.location.href = "/admin";
     } catch (err) {
       console.error(err);
-      setError("Credenziali non valide");
+      setError("Errore di connessione al server");
     }
   };
 
