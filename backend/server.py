@@ -93,7 +93,7 @@ def root():
 
 
 # ---------------------------------------------------------
-# AUTH SENZA JWT (SEMPLICE E FUNZIONANTE)
+# AUTH SENZA JWT
 # ---------------------------------------------------------
 
 @app.post("/api/auth/login")
@@ -142,7 +142,7 @@ def auth_me():
 
 
 # ---------------------------------------------------------
-# SOCI / TESSERATI
+# SOCI
 # ---------------------------------------------------------
 
 @app.get("/soci")
@@ -172,4 +172,136 @@ def add_socio(data: dict):
     session = db()
     s = Soci(nome=nome, cognome=cognome, email=email)
     session.add(s)
-    session.commit
+    session.commit()
+    session.refresh(s)
+
+    return {"ok": True, "id": s.id}
+
+
+@app.get("/tesserati")
+def tesserati():
+    session = db()
+    soci = session.query(Soci).all()
+    return [
+        {
+            "id": s.id,
+            "nome": s.nome,
+            "cognome": s.cognome,
+            "email": s.email,
+        }
+        for s in soci
+    ]
+
+
+@app.get("/tipologie-tesserato")
+def tipologie_tesserato():
+    return [
+        {"id": 1, "nome": "Base"},
+        {"id": 2, "nome": "Premium"},
+        {"id": 3, "nome": "Agonista"},
+    ]
+
+
+# ---------------------------------------------------------
+# PROFILO
+# ---------------------------------------------------------
+
+@app.get("/profilo")
+def get_profilo():
+    session = db()
+    p = session.query(Profilo).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Profilo non trovato")
+
+    return {
+        "id": p.id,
+        "nome": p.nome,
+        "email": p.email,
+        "telefono": p.telefono,
+        "ruolo": p.ruolo,
+        "avatar_url": p.avatar_url,
+    }
+
+
+@app.patch("/profilo/avatar")
+def update_avatar(file: UploadFile = File(...)):
+    path = f"uploads/{file.filename}"
+    with open(path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    session = db()
+    p = session.query(Profilo).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Profilo non trovato")
+
+    p.avatar_url = path
+    session.commit()
+
+    return {"ok": True, "avatar_url": path}
+
+
+# ---------------------------------------------------------
+# ABBONAMENTI
+# ---------------------------------------------------------
+
+@app.get("/abbonamenti")
+def get_abbonamenti():
+    session = db()
+    abbs = session.query(Abbonamento).all()
+    return [
+        {
+            "id": a.id,
+            "socio_id": a.socio_id,
+            "tipo": a.tipo,
+            "stato": a.stato,
+            "data_inizio": a.data_inizio,
+            "data_fine": a.data_fine,
+        }
+        for a in abbs
+    ]
+
+
+@app.post("/abbonamenti")
+def add_abbonamento(data: dict):
+    socio_id = data.get("socio_id")
+    tipo = data.get("tipo", "Mensile")
+    stato = data.get("stato", "attivo")
+
+    if not socio_id:
+        raise HTTPException(status_code=400, detail="socio_id mancante")
+
+    session = db()
+    now = datetime.utcnow()
+    a = Abbonamento(
+        socio_id=socio_id,
+        tipo=tipo,
+        stato=stato,
+        data_inizio=now,
+        data_fine=now + timedelta(days=30),
+    )
+    session.add(a)
+    session.commit()
+    session.refresh(a)
+
+    return {"ok": True, "id": a.id}
+
+
+# ---------------------------------------------------------
+# DASHBOARD
+# ---------------------------------------------------------
+
+@app.get("/dashboard")
+def dashboard():
+    session = db()
+    soci_count = session.query(Soci).count()
+    abbs_count = session.query(Abbonamento).count()
+    return {
+        "ok": True,
+        "soci": soci_count,
+        "abbonamenti": abbs_count,
+    }
+
+
+# ---------------------------------------------------------
+# FINE FILE
+# ---------------------------------------------------------
