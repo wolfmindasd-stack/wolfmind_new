@@ -207,4 +207,16 @@ def update_password(
     return {"ok": True}
 
 @app.patch("/profilo/avatar")
+@app.patch("/profilo/avatar")
 def update_avatar(file: UploadFile = File(...)):
+    path = f"uploads/{file.filename}"
+    with open(path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    session = db()
+    p = session.query(Profilo).first()
+    p.avatar_url = path
+    session.commit()
+
+    return {"ok": True}
+
