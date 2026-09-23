@@ -19,11 +19,11 @@ export function AuthProvider({ children }) {
           return;
         }
 
-        // Chiamata corretta con ID
-        const { data } = await api.get(`/api/auth/me?id=${profilo.id}`);
+        // CHIAMATA CORRETTA (senza doppio /api)
+        const { data } = await api.get(`/auth/me?id=${profilo.id}`);
         setUser(data);
       } catch (err) {
-        console.error("Errore /api/auth/me:", err);
+        console.error("Errore /auth/me:", err);
         setUser(false);
       }
     })();
@@ -32,7 +32,8 @@ export function AuthProvider({ children }) {
   // LOGIN
   const login = async (email, password) => {
     try {
-      const { data } = await api.post("/api/auth/login", { email, password });
+      // CHIAMATA CORRETTA (senza doppio /api)
+      const { data } = await api.post("/auth/login", { email, password });
 
       // Salva il profilo completo
       localStorage.setItem("profilo", JSON.stringify(data));
@@ -50,7 +51,7 @@ export function AuthProvider({ children }) {
   // LOGOUT
   const logout = async () => {
     try {
-      await api.post("/api/auth/logout");
+      await api.post("/auth/logout");
     } catch {}
 
     localStorage.removeItem("profilo");
