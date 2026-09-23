@@ -3,10 +3,9 @@ import { api, fmtEur } from "../lib/api";
 
 export default function Compensi() {
   const [compensi, setCompensi] = useState([]);
-  const [istruttori, setIstruttori] = useState([]);
-  const [collaboratori, setCollaboratori] = useState([]);
-  const [movimenti, setMovimenti] = useState([]);
-  const [ricevute, setRicevute] = useState([]);
+  const [filtroMese, setFiltroMese] = useState("");
+  const [filtroAnno, setFiltroAnno] = useState("");
+  const [showModal, setShowModal] = useState(false);
 
   const [form, setForm] = useState({
     persona_id: "",
@@ -16,50 +15,17 @@ export default function Compensi() {
     data: "",
   });
 
-  const [filtroMese, setFiltroMese] = useState("");
-  const [filtroAnno, setFiltroAnno] = useState("");
-
-  const [showModal, setShowModal] = useState(false);
-
-  // -------------------------------
-  // LOAD DATA
-  // -------------------------------
+  // LOAD
   const loadCompensi = async () => {
     const res = await api.get("/compensi");
     setCompensi(res.data);
   };
 
-  const loadIstruttori = async () => {
-    const res = await api.get("/istruttori");
-    setIstruttori(res.data);
-  };
-
-  const loadCollaboratori = async () => {
-    const res = await api.get("/collaboratori");
-    setCollaboratori(res.data);
-  };
-
-  const loadMovimenti = async () => {
-    const res = await api.get("/movimenti");
-    setMovimenti(res.data);
-  };
-
-  const loadRicevute = async () => {
-    const res = await api.get("/ricevute");
-    setRicevute(res.data);
-  };
-
   useEffect(() => {
     loadCompensi();
-    loadIstruttori();
-    loadCollaboratori();
-    loadMovimenti();
-    loadRicevute();
   }, []);
 
-  // -------------------------------
-  // ADD COMPENSO
-  // -------------------------------
+  // ADD
   const addCompenso = async () => {
     await api.post("/compensi", form);
     setShowModal(false);
@@ -73,17 +39,13 @@ export default function Compensi() {
     loadCompensi();
   };
 
-  // -------------------------------
-  // DELETE COMPENSO
-  // -------------------------------
+  // DELETE
   const deleteCompenso = async (id) => {
     await api.delete(`/compensi/${id}`);
     loadCompensi();
   };
 
-  // -------------------------------
   // FILTRI
-  // -------------------------------
   const compensiFiltrati = compensi.filter((c) => {
     const d = new Date(c.data);
     const mese = d.getMonth() + 1;
@@ -95,14 +57,12 @@ export default function Compensi() {
     );
   });
 
-  // -------------------------------
   // RENDER
-  // -------------------------------
   return (
     <div className="p-4">
       <h1 className="text-3xl font-bold mb-4">Compensi</h1>
 
-           {/* FILTRI */}
+      {/* FILTRI */}
       <div className="flex gap-4 mb-4">
         <select
           className="border p-2 rounded"
@@ -129,9 +89,16 @@ export default function Compensi() {
             </option>
           ))}
         </select>
+
+        <button
+          onClick={() => setShowModal(true)}
+          className="px-4 py-2 bg-blue-600 text-white rounded"
+        >
+          Nuovo compenso
+        </button>
       </div>
 
-      {/* LISTA COMPENSI */}
+      {/* LISTA */}
       <div className="space-y-2">
         {compensiFiltrati.map((c) => (
           <div
@@ -155,7 +122,7 @@ export default function Compensi() {
         ))}
       </div>
 
-      {/* MODALE NUOVO COMPENSO */}
+      {/* MODALE */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
           <div className="bg-white p-6 rounded w-80 space-y-4">
@@ -207,4 +174,3 @@ export default function Compensi() {
     </div>
   );
 }
-
