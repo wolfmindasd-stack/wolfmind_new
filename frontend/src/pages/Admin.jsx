@@ -35,9 +35,7 @@ export default function Admin() {
     data: "",
   });
 
-  // -------------------------------
   // LOAD
-  // -------------------------------
   const loadTipi = async () => {
     const r = await api.get("/tipi");
     setTipi(r.data);
@@ -77,9 +75,7 @@ export default function Admin() {
     loadRicevute();
   }, []);
 
-  // -------------------------------
   // ADD
-  // -------------------------------
   const addTipo = async () => {
     await api.post("/tipi", formTipo);
     setFormTipo({ nome: "" });
@@ -116,9 +112,7 @@ export default function Admin() {
     loadRicevute();
   };
 
-  // -------------------------------
   // RENDER
-  // -------------------------------
   return (
     <div className="space-y-10 text-white p-6">
       <h1 className="text-3xl font-bold">Pannello Admin</h1>
@@ -383,3 +377,16 @@ export default function Admin() {
           className="mt-2 px-4 py-2 bg-blue-600 rounded"
         >
           Aggiungi ricevuta
+        </button>
+
+        <ul className="mt-4 space-y-1">
+          {ricevute.map((r) => (
+            <li key={r.id} className="text-white/80">
+              {fmtDate(r.data)} — {fmtEur(r.importo)}
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
