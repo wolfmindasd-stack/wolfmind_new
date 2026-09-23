@@ -16,24 +16,26 @@ export default function Login() {
   // -------------------------------
   // LOGIN
   // -------------------------------
-  const login = async () => {
-    setLoading(true);
-    setError("");
+ const login = async () => {
+  setLoading(true);
+  setError("");
 
-    try {
-      const res = await api.post("/auth/login", form);
+  try {
+    const res = await api.post("/auth/login", form);
 
-      // Salva token
-      localStorage.setItem("token", res.data.token);
+    // Salva tutto il profilo
+    localStorage.setItem("user", JSON.stringify(res.data));
+    localStorage.setItem("ruolo", res.data.ruolo);
 
-      // Vai alla dashboard
-      navigate("/dashboard");
-    } catch (err) {
-      setError("Credenziali non valide");
-    }
+    // Vai alla dashboard
+    navigate("/dashboard");
+  } catch (err) {
+    setError("Credenziali non valide");
+  }
 
-    setLoading(false);
-  };
+  setLoading(false);
+};
+
 
   // -------------------------------
   // RENDER
