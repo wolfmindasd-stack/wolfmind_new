@@ -15,7 +15,9 @@ export default function Compensi() {
     data: "",
   });
 
+  // -------------------------------
   // LOAD
+  // -------------------------------
   const loadCompensi = async () => {
     const res = await api.get("/compensi");
     setCompensi(res.data);
@@ -25,7 +27,9 @@ export default function Compensi() {
     loadCompensi();
   }, []);
 
+  // -------------------------------
   // ADD
+  // -------------------------------
   const addCompenso = async () => {
     await api.post("/compensi", form);
     setShowModal(false);
@@ -39,13 +43,17 @@ export default function Compensi() {
     loadCompensi();
   };
 
+  // -------------------------------
   // DELETE
+  // -------------------------------
   const deleteCompenso = async (id) => {
     await api.delete(`/compensi/${id}`);
     loadCompensi();
   };
 
+  // -------------------------------
   // FILTRI
+  // -------------------------------
   const compensiFiltrati = compensi.filter((c) => {
     const d = new Date(c.data);
     const mese = d.getMonth() + 1;
@@ -57,15 +65,17 @@ export default function Compensi() {
     );
   });
 
+  // -------------------------------
   // RENDER
+  // -------------------------------
   return (
-    <div className="p-4">
-      <h1 className="text-3xl font-bold mb-4">Compensi</h1>
+    <div className="p-4 space-y-6">
+      <h1 className="text-3xl font-bold text-white">Compensi</h1>
 
       {/* FILTRI */}
       <div className="flex gap-4 mb-4">
         <select
-          className="border p-2 rounded"
+          className="border p-2 rounded bg-white/10 text-white"
           value={filtroMese}
           onChange={(e) => setFiltroMese(e.target.value)}
         >
@@ -78,7 +88,7 @@ export default function Compensi() {
         </select>
 
         <select
-          className="border p-2 rounded"
+          className="border p-2 rounded bg-white/10 text-white"
           value={filtroAnno}
           onChange={(e) => setFiltroAnno(e.target.value)}
         >
@@ -103,18 +113,18 @@ export default function Compensi() {
         {compensiFiltrati.map((c) => (
           <div
             key={c.id}
-            className="p-4 bg-gray-100 rounded flex justify-between items-center"
+            className="p-4 bg-white/10 rounded flex justify-between items-center"
           >
             <div>
-              <div className="font-semibold">{c.descrizione}</div>
-              <div className="text-sm text-gray-600">
+              <div className="font-semibold text-white">{c.descrizione}</div>
+              <div className="text-sm text-white/60">
                 {fmtEur(c.importo)} — {c.data}
               </div>
             </div>
 
             <button
               onClick={() => deleteCompenso(c.id)}
-              className="px-3 py-1 bg-red-500 text-white rounded"
+              className="px-3 py-1 bg-red-600 text-white rounded"
             >
               Elimina
             </button>
@@ -125,7 +135,7 @@ export default function Compensi() {
       {/* MODALE */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded w-80 space-y-4">
+          <div className="bg-white text-black p-6 rounded w-80 space-y-4">
             <h2 className="text-xl font-bold">Nuovo compenso</h2>
 
             <input
