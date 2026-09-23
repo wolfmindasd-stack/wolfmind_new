@@ -8,74 +8,133 @@ export default function Dashboard() {
   const [movimenti, setMovimenti] = useState([]);
   const [ricevute, setRicevute] = useState([]);
 
+  const [loading, setLoading] = useState(true);
+
   // -------------------------------
-  // LOAD DATA
+  // LOAD
   // -------------------------------
   const loadTesserati = async () => {
-    const res = await api.get("/tesserati");
-    setTesserati(res.data);
+    const r = await api.get("/tesserati");
+    setTesserati(r.data);
   };
 
   const loadSoci = async () => {
-    const res = await api.get("/soci");
-    setSoci(res.data);
+    const r = await api.get("/soci");
+    setSoci(r.data);
   };
 
   const loadPacchetti = async () => {
-    const res = await api.get("/pacchetti");
-    setPacchetti(res.data);
+    const r = await api.get("/pacchetti");
+    setPacchetti(r.data);
   };
 
   const loadMovimenti = async () => {
-    const res = await api.get("/movimenti");
-    setMovimenti(res.data);
+    const r = await api.get("/movimenti");
+    setMovimenti(r.data);
   };
 
   const loadRicevute = async () => {
-    const res = await api.get("/ricevute");
-    setRicevute(res.data);
+    const r = await api.get("/ricevute");
+    setRicevute(r.data);
   };
 
   useEffect(() => {
-    loadTesserati();
-    loadSoci();
-    loadPacchetti();
-    loadMovimenti();
-    loadRicevute();
+    Promise.all([
+      loadTesserati(),
+      loadSoci(),
+      loadPacchetti(),
+      loadMovimenti(),
+      loadRicevute(),
+    ]).then(() => setLoading(false));
   }, []);
+
+  if (loading) {
+    return <div className="text-white">Caricamento…</div>;
+  }
+
+  // -------------------------------
+  // CALCOLI
+  // -------------------------------
+  const totaleEntrate = movimenti
+    .filter((m) => m.importo > 0)
+    .reduce((sum, m) => sum + m.importo, 0);
+
+  const totaleUscite = movimenti
+    .filter((m) => m.importo < 0)
+    .reduce((sum, m) => sum + m.importo, 0);
+
+  const saldo = totaleEntrate + totaleUscite;
 
   // -------------------------------
   // RENDER
   // -------------------------------
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+    <div className="space-y-6 text-white">
+      <h1 className="text-3xl font-bold">Dashboard</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded shadow">
-          <h2 className="text-xl font-bold mb-2">Tesserati</h2>
-          <p className="text-4xl font-bold">{tesserati.length}</p>
+      {/* CARDS */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="p-4 bg-white/10 rounded-lg">
+          <div className="text-sm text-white/60">Tesserati</div>
+          <div className="text-2xl font-bold">{tesserati.length}</div>
         </div>
 
-        <div className="bg-white p-6 rounded shadow">
-          <h2 className="text-xl font-bold mb-2">Soci</h2>
-          <p className="text-4xl font-bold">{soci.length}</p>
+        <div className="p-4 bg-white/10 rounded-lg">
+          <div className="text-sm text-white/60">Soci</div>
+          <div className="text-2xl font-bold">{soci.length}</div>
         </div>
 
-        <div className="bg-white p-6 rounded shadow">
-          <h2 className="text-xl font-bold mb-2">Pacchetti</h2>
-          <p className="text-4xl font-bold">{pacchetti.length}</p>
+        <div className="p-4 bg-white/10 rounded-lg">
+          <div className="text-sm text-white/60">Pacchetti</div>
+          <div className="text-2xl font-bold">{pacchetti.length}</div>
+        </div>
+      </div>
+
+      {/* FINANZE */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="p-4 bg-white/10 rounded-lg">
+          <div className="text-sm text-white/60">Entrate</div>
+          <div className="text-2xl font-bold text-green-400">
+            {fmtEur(totaleEntrate)}
+          </div>
         </div>
 
-        <div className="bg-white p-6 rounded shadow">
-          <h2 className="text-xl font-bold mb-2">Movimenti</h2>
-          <p className="text-4xl font-bold">{movimenti.length}</p>
+        <div className="p-4 bg-white/10 rounded-lg">
+          <div className="text-sm text-white/60">Uscite</div>
+          <div className="text-2xl font-bold text-red-400">
+            {fmtEur(totaleUscite)}
+          </div>
         </div>
 
-        <div className="bg-white p-6 rounded shadow">
-          <h2 className="text-xl font-bold mb-2">Ricevute</h2>
-          <p className="text-4xl font-bold">{ricevute.length}</p>
+        <div className="p-4 bg-white/10 rounded-lg">
+          <div className="text-sm text-white/60">Saldo</div>
+          <div
+            className={`text-2xl font-bold ${
+              saldo >= 0 ? "text-green-400" : "text-red-400"
+            }`}
+          >
+            {fmtEur(saldo)}
+          </div>
         </div>
+      </div>
+
+      {/* RICEVUTE */}
+      <div className="space-y-2">
+        <h2 className="text-xl font-bold">Ultime ricevute</h2>
+
+        {ricevute.slice(0, 5).map((r) => (
+          <div
+            key={r.id}
+            className="p-4 bg-white/10 rounded-lg flex justify-between"
+          >
+            <div>
+              <div className="font-semibold">{r.persona_nome}</div>
+              <div className="text-sm text-white/60">{r.data}</div>
+            </div>
+
+            <div className="font-bold">{fmtEur(r.importo)}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
