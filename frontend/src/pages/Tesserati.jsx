@@ -33,9 +33,6 @@ export default function Tesserati() {
     abbonamento_id: "",
   });
 
-  // -------------------------------
-  // LOAD DATA
-  // -------------------------------
   const load = async () => {
     const r1 = await api.get("/tesserati");
     const r2 = await api.get("/pacchetti");
@@ -50,9 +47,6 @@ export default function Tesserati() {
     load();
   }, []);
 
-  // -------------------------------
-  // FILTRO
-  // -------------------------------
   const filtered = items.filter((t) => {
     const s = search.toLowerCase();
     return (
@@ -62,9 +56,6 @@ export default function Tesserati() {
     );
   });
 
-  // -------------------------------
-  // NUOVO TESSERATO
-  // -------------------------------
   const save = async () => {
     await api.post("/tesserati", form);
     setShowModal(false);
@@ -81,17 +72,11 @@ export default function Tesserati() {
     load();
   };
 
-  // -------------------------------
-  // ELIMINA TESSERATO
-  // -------------------------------
   const del = async (id) => {
     await api.delete(`/tesserati/${id}`);
     load();
   };
 
-  // -------------------------------
-  // APRI MODIFICA
-  // -------------------------------
   const openEdit = (t) => {
     setEditForm({
       id: t.id,
@@ -107,18 +92,12 @@ export default function Tesserati() {
     setShowEditModal(true);
   };
 
-  // -------------------------------
-  // SALVA MODIFICA
-  // -------------------------------
   const update = async () => {
     await api.put(`/tesserati/${editForm.id}`, editForm);
     setShowEditModal(false);
     load();
   };
 
-  // -------------------------------
-  // SCADENZE
-  // -------------------------------
   const isExpiring = (date) => {
     if (!date) return false;
     const d = new Date(date);
@@ -127,9 +106,6 @@ export default function Tesserati() {
     return diff < 30;
   };
 
-  // -------------------------------
-  // RENDER
-  // -------------------------------
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -142,7 +118,7 @@ export default function Tesserati() {
         </button>
       </div>
 
-           <input
+      <input
         type="text"
         placeholder="Cerca…"
         value={search}
