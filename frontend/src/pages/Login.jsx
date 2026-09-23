@@ -1,90 +1,76 @@
 import React, { useState } from "react";
+import { api } from "../lib/api";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const navigate = useNavigate();
+
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+  });
+
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  // -------------------------------
+  // LOGIN
+  // -------------------------------
+  const login = async () => {
+    setLoading(true);
     setError("");
 
     try {
-      const response = await fetch(
-        "https://wolfmind-new-backend.onrender.com/api/auth/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email,
-            password,
-          }),
-        }
-      );
+      const res = await api.post("/auth/login", form);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.detail || "Errore di login");
-        return;
-      }
-
-      // Salva il profilo completo
-      localStorage.setItem("profilo", JSON.stringify(data));
+      // Salva token
+      localStorage.setItem("token", res.data.token);
 
       // Vai alla dashboard
-      window.location.href = "/admin";
+      navigate("/dashboard");
     } catch (err) {
-      console.error(err);
-      setError("Errore di connessione al server");
+      setError("Credenziali non valide");
     }
+
+    setLoading(false);
   };
 
+  // -------------------------------
+  // RENDER
+  // -------------------------------
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-100">
-      <form
-        onSubmit={handleLogin}
-        className="bg-white p-8 rounded shadow-md w-80"
-      >
-        <h2 className="text-2xl font-bold mb-4 text-center">Login</h2>
+    <div className="flex items-center justify-center min-h-screen bg-gray-900">
+      <div className="bg-white p-8 rounded-lg w-80 space-y-4">
+        <h1 className="text-2xl font-bold text-center">Login</h1>
 
         {error && (
-          <div className="bg-red-100 text-red-700 p-2 mb-3 rounded">
-            {error}
-          </div>
+          <div className="text-red-600 text-center text-sm">{error}</div>
         )}
 
-        <label className="block mb-2">
-          Email
-          <input
-            type="email"
-            className="w-full border p-2 rounded mt-1"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </label>
+        <input
+          type="email"
+          placeholder="Email"
+          className="border p-2 w-full rounded"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+        />
 
-        <label className="block mb-4">
-          Password
-          <input
-            type="password"
-            className="w-full border p-2 rounded mt-1"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </label>
+        <input
+          type="password"
+          placeholder="Password"
+          className="border p-2 w-full rounded"
+          value={form.password}
+          onChange={(e) => setForm({ ...form, password: e.target.value })}
+        />
 
         <button
-          type="submit"
-          className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
+          onClick={login}
+          disabled={loading}
+          className="w-full bg-blue-600 text-white p-2 rounded"
         >
-          Accedi
+          {loading ? "Attendere..." : "Accedi"}
         </button>
-      </form>
+      </div>
     </div>
   );
 }
