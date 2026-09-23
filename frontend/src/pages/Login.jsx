@@ -13,33 +13,25 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // -------------------------------
-  // LOGIN
-  // -------------------------------
- const login = async () => {
-  setLoading(true);
-  setError("");
+  const login = async () => {
+    setLoading(true);
+    setError("");
 
-  try {
-    const res = await api.post("/auth/login", form);
+    try {
+      const res = await api.post("/auth/login", form);
 
-    // Salva tutto il profilo
-    localStorage.setItem("user", JSON.stringify(res.data));
-    localStorage.setItem("ruolo", res.data.ruolo);
+      // Salva tutto il profilo
+      localStorage.setItem("user", JSON.stringify(res.data));
+      localStorage.setItem("ruolo", res.data.ruolo);
 
-    // Vai alla dashboard
-    navigate("/dashboard");
-  } catch (err) {
-    setError("Credenziali non valide");
-  }
+      navigate("/dashboard");
+    } catch (err) {
+      setError("Credenziali non valide");
+    }
 
-  setLoading(false);
-};
+    setLoading(false);
+  };
 
-
-  // -------------------------------
-  // RENDER
-  // -------------------------------
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-900">
       <div className="bg-white p-8 rounded-lg w-80 space-y-4">
