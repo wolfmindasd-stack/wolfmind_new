@@ -141,7 +141,9 @@ def auth_me(id: int):
         "ruolo": p.ruolo,
         "avatar_url": p.avatar_url
     }
-
+@app.post("/api/auth/logout")
+def logout():
+    return {"ok": True}
 
 
 # ---------------------------------------------------------
