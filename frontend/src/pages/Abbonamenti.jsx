@@ -57,6 +57,13 @@ export default function Abbonamenti() {
   // -------------------------------
   const addAbbonamento = async () => {
     await api.post("/abbonamenti", form);
+    setForm({
+      tesserato_id: "",
+      pacchetto_id: "",
+      data_inizio: "",
+      data_fine: "",
+      importo: "",
+    });
     loadAbbonamenti();
   };
 
@@ -64,15 +71,15 @@ export default function Abbonamenti() {
   // RENDER
   // -------------------------------
   return (
-    <div className="p-4">
-      <h1 className="text-3xl font-bold mb-4">Abbonamenti</h1>
+    <div className="p-4 space-y-6">
+      <h1 className="text-3xl font-bold text-white">Abbonamenti</h1>
 
       {/* FORM */}
-      <div className="mb-6">
-        <h2 className="text-xl font-bold mb-2">Nuovo Abbonamento</h2>
+      <div className="bg-white/10 p-4 rounded-lg space-y-4">
+        <h2 className="text-xl font-bold text-white">Nuovo Abbonamento</h2>
 
         <select
-          className="border p-2 mr-2"
+          className="border p-2 rounded w-full bg-white/20 text-white"
           value={form.tesserato_id}
           onChange={(e) =>
             setForm({ ...form, tesserato_id: e.target.value })
@@ -81,13 +88,13 @@ export default function Abbonamenti() {
           <option value="">Seleziona tesserato</option>
           {tesserati.map((t) => (
             <option key={t.id} value={t.id}>
-              {t.nome}
+              {t.nome} {t.cognome}
             </option>
           ))}
         </select>
 
         <select
-          className="border p-2 mr-2"
+          className="border p-2 rounded w-full bg-white/20 text-white"
           value={form.pacchetto_id}
           onChange={(e) =>
             setForm({ ...form, pacchetto_id: e.target.value })
@@ -103,7 +110,7 @@ export default function Abbonamenti() {
 
         <input
           type="date"
-          className="border p-2 mr-2"
+          className="border p-2 rounded w-full bg-white/20 text-white"
           value={form.data_inizio}
           onChange={(e) =>
             setForm({ ...form, data_inizio: e.target.value })
@@ -112,7 +119,7 @@ export default function Abbonamenti() {
 
         <input
           type="date"
-          className="border p-2 mr-2"
+          className="border p-2 rounded w-full bg-white/20 text-white"
           value={form.data_fine}
           onChange={(e) =>
             setForm({ ...form, data_fine: e.target.value })
@@ -121,7 +128,7 @@ export default function Abbonamenti() {
 
         <input
           type="number"
-          className="border p-2 mr-2"
+          className="border p-2 rounded w-full bg-white/20 text-white"
           value={form.importo}
           onChange={(e) =>
             setForm({ ...form, importo: e.target.value })
@@ -130,7 +137,7 @@ export default function Abbonamenti() {
         />
 
         <button
-          className="bg-green-600 text-white px-4 py-2"
+          className="px-4 py-2 bg-green-600 text-white rounded-lg"
           onClick={addAbbonamento}
         >
           Salva
@@ -138,17 +145,27 @@ export default function Abbonamenti() {
       </div>
 
       {/* LISTA ABBONAMENTI */}
-      <h2 className="text-xl font-bold mb-2">Lista Abbonamenti</h2>
-      <ul>
+      <div className="space-y-2">
+        <h2 className="text-xl font-bold text-white">Lista Abbonamenti</h2>
+
         {abbonamenti.map((a) => (
-          <li key={a.id} className="mb-2">
-            {a.tesserato_nome} — {a.pacchetto_nome} — {fmtEur(a.importo)}
-            <span className="ml-4 text-gray-500">
-              {a.data_inizio} → {a.data_fine}
-            </span>
-          </li>
+          <div
+            key={a.id}
+            className="p-4 bg-white/10 rounded-lg text-white flex justify-between"
+          >
+            <div>
+              <div className="font-semibold">
+                {a.tesserato_nome} — {a.pacchetto_nome}
+              </div>
+              <div className="text-sm text-white/60">
+                {a.data_inizio} → {a.data_fine}
+              </div>
+            </div>
+
+            <div className="font-bold">{fmtEur(a.importo)}</div>
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
