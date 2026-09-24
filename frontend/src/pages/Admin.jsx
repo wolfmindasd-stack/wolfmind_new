@@ -334,59 +334,46 @@ export default function Admin() {
         </ul>
       </section>
 
-      {/* RICEVUTE */}
-      <section className="bg-white/10 p-4 rounded-lg">
-        <h2 className="text-xl font-bold mb-2">Ricevute</h2>
+           {/* SEZIONE RICEVUTE */}
+      <section className="bg-white/10 p-4 rounded-lg mt-6">
+        <h2 className="text-xl font-bold text-white">Ricevute</h2>
 
-        <select
-          className="border p-2 rounded w-full bg-white/20 text-white"
-          value={formRicevuta.persona_id}
-          onChange={(e) =>
-            setFormRicevuta({ ...formRicevuta, persona_id: e.target.value })
-          }
-        >
-          <option value="">Seleziona persona</option>
-          {tesserati.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.nome} {t.cognome}
-            </option>
-          ))}
-        </select>
+        <div className="mt-2 space-y-2">
+          <input
+            type="number"
+            placeholder="Importo"
+            value={formRicevuta.importo}
+            onChange={(e) =>
+              setFormRicevuta({ ...formRicevuta, importo: e.target.value })
+            }
+            className="px-3 py-2 rounded bg-white/10 text-white w-full"
+          />
 
-        <input
-          type="number"
-          className="border p-2 rounded w-full bg-white/20 text-white mt-2"
-          placeholder="Importo"
-          value={formRicevuta.importo}
-          onChange={(e) =>
-            setFormRicevuta({ ...formRicevuta, importo: e.target.value })
-          }
-        />
-
-        <input
-          type="date"
-          className="border p-2 rounded w-full bg-white/20 text-white mt-2"
-          value={formRicevuta.data}
-          onChange={(e) =>
-            setFormRicevuta({ ...formRicevuta, data: e.target.value })
-          }
-        />
+          <input
+            type="date"
+            value={formRicevuta.data}
+            onChange={(e) =>
+              setFormRicevuta({ ...formRicevuta, data: e.target.value })
+            }
+            className="px-3 py-2 rounded bg-white/10 text-white w-full"
+          />
+        </div>
 
         <button
-  onClick={addRicevuta}
-  className="mt-2 px-4 py-2 bg-blue-600 rounded"
->
-  Aggiungi ricevuta
-</button>
+          onClick={addRicevuta}
+          className="mt-2 px-4 py-2 bg-blue-600 rounded"
+        >
+          Aggiungi ricevuta
+        </button>
 
-<ul className="mt-4 space-y-1">
-  {ricevute.map((r) => (
-    <li key={r.id} className="text-white/80">
-      {fmtDate(r.data)} — {fmtEur(r.importo)}
-    </li>
-  ))}
-</ul>
-</section>
-</div>
-);
+        <ul className="mt-4 space-y-1">
+          {ricevute.map((r) => (
+            <li key={r.id} className="text-white/80">
+              {fmtDate(r.data)} — {fmtEur(r.importo)}
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
 }
