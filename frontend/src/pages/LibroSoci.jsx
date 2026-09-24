@@ -51,7 +51,11 @@ export default function LibroSoci() {
   // ADD QUOTA
   // -------------------------------
   const addQuota = async () => {
-    await api.post("/quote", formQuota);
+    await api.post("/quote", {
+      ...formQuota,
+      socio_id: Number(formQuota.socio_id),
+    });
+
     setShowModal(false);
     setFormQuota({ socio_id: "", importo: "", data: "" });
     loadQuote();
@@ -103,6 +107,16 @@ export default function LibroSoci() {
                 ? "🟢 In regola"
                 : "🔴 Non in regola"}
             </div>
+
+            <button
+              className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-xs"
+              onClick={() => {
+                setFormQuota({ ...formQuota, socio_id: s.id });
+                setShowModal(true);
+              }}
+            >
+              Aggiungi quota
+            </button>
           </div>
         ))}
       </div>
@@ -121,4 +135,50 @@ export default function LibroSoci() {
               }
             >
               <option value="">Seleziona socio</option>
-              {
+              {soci.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nome} {s.cognome}
+                </option>
+              ))}
+            </select>
+
+            <input
+              type="number"
+              className="border p-2 w-full rounded"
+              placeholder="Importo"
+              value={formQuota.importo}
+              onChange={(e) =>
+                setFormQuota({ ...formQuota, importo: e.target.value })
+              }
+            />
+
+            <input
+              type="date"
+              className="border p-2 w-full rounded"
+              value={formQuota.data}
+              onChange={(e) =>
+                setFormQuota({ ...formQuota, data: e.target.value })
+              }
+            />
+
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-4 py-2 bg-gray-300 rounded"
+                onClick={() => setShowModal(false)}
+              >
+                Annulla
+              </button>
+
+              <button
+                className="px-4 py-2 bg-blue-600 text-white rounded"
+                onClick={addQuota}
+              >
+                Salva
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
