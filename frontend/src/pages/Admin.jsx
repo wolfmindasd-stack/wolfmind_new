@@ -373,20 +373,20 @@ export default function Admin() {
         />
 
         <button
-          onClick={addRicevuta}
-          className="mt-2 px-4 py-2 bg-blue-600 rounded"
-        >
-          Aggiungi ricevuta
-        </button>
+  onClick={addRicevuta}
+  className="mt-2 px-4 py-2 bg-blue-600 rounded"
+>
+  Aggiungi ricevuta
+</button>
 
-        <ul className="mt-4 space-y-1">
-          {ricevute.map((r) => (
-            <li key={r.id} className="text-white/80">
-              {fmtDate(r.data)} — {fmtEur(r.importo)}
-            </li>
-          ))}
-        </ul>
-      </section>
-    </div>
-  );
+<ul className="mt-4 space-y-1">
+  {ricevute.map((r) => (
+    <li key={r.id} className="text-white/80">
+      {fmtDate(r.data)} — {fmtEur(r.importo)}
+    </li>
+  ))}
+</ul>
+</section>
+</div>
+);
 }
