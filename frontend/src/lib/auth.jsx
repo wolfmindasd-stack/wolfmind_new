@@ -8,27 +8,26 @@ export function AuthProvider({ children }) {
 
   const loadUser = async () => {
     const token = localStorage.getItem("token");
+    
+    // Se non c'è token, l'utente non è autenticato
     if (!token) {
       setUser(false);
       return;
     }
 
     try {
-      // Impostiamo l'header Authorization per le chiamate successive
+      // Esegui la chiamata inviando il token di autenticazione
       const res = await api.get("/api/auth/me", {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUser(res.data);
     } catch (err) {
-      try {
-        const resFallback = await api.get("/auth/me", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setUser(resFallback.data);
-      } catch (e) {
-        localStorage.removeItem("token");
-        setUser(false);
-      }
+      console.warn("Errore durante il recupero dell'utente (422/401):", err.response?.status);
+      
+      // Se il token è illegale, scaduto o invalido (422 o 401), pulisci il localStorage
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setUser(false);
     }
   };
 
@@ -37,36 +36,38 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    const payload = { username: email, email: email, password: password };
+    // Adatta il payload in base alle esigenze del tuo backend.
+    // Invia solo username e password
+    const payload = { username: email, password: password };
     
-    // Tenta il login
-    let authData;
     try {
       const res = await api.post("/api/auth/login", payload);
-      authData = res.data;
-    } catch (err) {
-      if (err.response?.status === 404) {
-        const resFallback = await api.post("/auth/login", payload);
-        authData = resFallback.data;
-      } else {
-        throw err;
-      }
-    }
+      const authData = res.data;
 
-    // Salva il token se presente o salva l'oggetto utente
-    const token = authData.access_token || authData.token || authData.id;
-    if (token) {
-      localStorage.setItem("token", token);
+      // Estrai il token (supporta diversi formati di risposta backend)
+      const token = authData.access_token || authData.token || authData.id;
+
+      if (token) {
+        localStorage.setItem("token", token);
+      }
+      
+      localStorage.setItem("user", JSON.stringify(authData));
+      setUser(authData);
+      return authData;
+    } catch (err) {
+      console.error("Errore Login:", err.response?.data || err.message);
+      throw err;
     }
-    
-    localStorage.setItem("user", JSON.stringify(authData));
-    setUser(authData);
-    return authData;
   };
 
   const logout = async () => {
     try {
-      await api.post("/api/auth/logout");
+      const token = localStorage.getItem("token");
+      if (token) {
+        await api.post("/api/auth/logout", {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
     } catch (err) {
       console.warn("Logout error:", err);
     } finally {
