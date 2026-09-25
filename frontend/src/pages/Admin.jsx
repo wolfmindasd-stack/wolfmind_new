@@ -35,7 +35,9 @@ export default function Admin() {
     data: "",
   });
 
-  // LOAD
+  // -------------------------------
+  // LOAD DATA (In parallelo)
+  // -------------------------------
   const loadTipi = async () => {
     const r = await api.get("/tipi");
     setTipi(r.data);
@@ -67,54 +69,118 @@ export default function Admin() {
   };
 
   useEffect(() => {
-    loadTipi();
-    loadTesserati();
-    loadSoci();
-    loadPacchetti();
-    loadMovimenti();
-    loadRicevute();
+    const loadAllData = async () => {
+      try {
+        await Promise.all([
+          loadTipi(),
+          loadTesserati(),
+          loadSoci(),
+          loadPacchetti(),
+          loadMovimenti(),
+          loadRicevute(),
+        ]);
+      } catch (error) {
+        console.error("Errore nel caricamento dei dati iniziali:", error);
+      }
+    };
+
+    loadAllData();
   }, []);
 
-  // ADD
+  // -------------------------------
+  // ADD ACTIONS
+  // -------------------------------
   const addTipo = async () => {
-    await api.post("/tipi", formTipo);
-    setFormTipo({ nome: "" });
-    loadTipi();
+    if (!formTipo.nome.trim()) return alert("Inserisci un nome tipo.");
+    try {
+      await api.post("/tipi", formTipo);
+      setFormTipo({ nome: "" });
+      loadTipi();
+    } catch (err) {
+      console.error("Errore aggiunta tipo:", err);
+    }
   };
 
   const addTesserato = async () => {
-    await api.post("/tesserati", formTesserato);
-    setFormTesserato({ nome: "", cognome: "", email: "" });
-    loadTesserati();
+    if (!formTesserato.nome.trim() || !formTesserato.cognome.trim()) {
+      return alert("Compila nome e cognome tesserato.");
+    }
+    try {
+      await api.post("/tesserati", formTesserato);
+      setFormTesserato({ nome: "", cognome: "", email: "" });
+      loadTesserati();
+    } catch (err) {
+      console.error("Errore aggiunta tesserato:", err);
+    }
   };
 
   const addSocio = async () => {
-    await api.post("/soci", formSocio);
-    setFormSocio({ nome: "", cognome: "", email: "" });
-    loadSoci();
+    if (!formSocio.nome.trim() || !formSocio.cognome.trim()) {
+      return alert("Compila nome e cognome socio.");
+    }
+    try {
+      await api.post("/soci", formSocio);
+      setFormSocio({ nome: "", cognome: "", email: "" });
+      loadSoci();
+    } catch (err) {
+      console.error("Errore aggiunta socio:", err);
+    }
   };
 
   const addPacchetto = async () => {
-    await api.post("/pacchetti", formPacchetto);
-    setFormPacchetto({ nome: "", prezzo: "" });
-    loadPacchetti();
+    if (!formPacchetto.nome.trim() || !formPacchetto.prezzo) {
+      return alert("Compila nome e prezzo del pacchetto.");
+    }
+    try {
+      await api.post("/pacchetti", {
+        ...formPacchetto,
+        prezzo: Number(formPacchetto.prezzo),
+      });
+      setFormPacchetto({ nome: "", prezzo: "" });
+      loadPacchetti();
+    } catch (err) {
+      console.error("Errore aggiunta pacchetto:", err);
+    }
   };
 
   const addMovimento = async () => {
-    await api.post("/movimenti", formMovimento);
-    setFormMovimento({ descrizione: "", importo: "", data: "" });
-    loadMovimenti();
+    if (!formMovimento.descrizione.trim() || !formMovimento.importo || !formMovimento.data) {
+      return alert("Compila tutti i campi del movimento.");
+    }
+    try {
+      await api.post("/movimenti", {
+        ...formMovimento,
+        importo: Number(formMovimento.importo),
+      });
+      setFormMovimento({ descrizione: "", importo: "", data: "" });
+      loadMovimenti();
+    } catch (err) {
+      console.error("Errore aggiunta movimento:", err);
+    }
   };
 
   const addRicevuta = async () => {
-    await api.post("/ricevute", formRicevuta);
-    setFormRicevuta({ persona_id: "", importo: "", data: "" });
-    loadRicevute();
+    if (!formRicevuta.importo || !formRicevuta.data) {
+      return alert("Compila tutti i campi della ricevuta.");
+    }
+    try {
+      await api.post("/ricevute", {
+        ...formRicevuta,
+        persona_id: formRicevuta.persona_id ? Number(formRicevuta.persona_id) : null,
+        importo: Number(formRicevuta.importo),
+      });
+      setFormRicevuta({ persona_id: "", importo: "", data: "" });
+      loadRicevute();
+    } catch (err) {
+      console.error("Errore aggiunta ricevuta:", err);
+    }
   };
 
+  // -------------------------------
   // RENDER
+  // -------------------------------
   return (
-    <div className="space-y-10 text-white p-6">
+    <div className="space-y-10 text-white p-6 max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold">Pannello Admin</h1>
 
       {/* TIPI */}
@@ -123,7 +189,7 @@ export default function Admin() {
 
         <input
           type="text"
-          className="border p-2 rounded w-full bg-white/20 text-white"
+          className="border border-white/20 p-2 rounded w-full bg-white/10 text-white placeholder-white/50"
           placeholder="Nome tipo"
           value={formTipo.nome}
           onChange={(e) => setFormTipo({ nome: e.target.value })}
@@ -131,7 +197,7 @@ export default function Admin() {
 
         <button
           onClick={addTipo}
-          className="mt-2 px-4 py-2 bg-blue-600 rounded"
+          className="mt-2 px-4 py-2 bg-blue-600 rounded hover:bg-blue-500 transition"
         >
           Aggiungi tipo
         </button>
@@ -149,39 +215,41 @@ export default function Admin() {
       <section className="bg-white/10 p-4 rounded-lg">
         <h2 className="text-xl font-bold mb-2">Tesserati</h2>
 
-        <input
-          type="text"
-          className="border p-2 rounded w-full bg-white/20 text-white"
-          placeholder="Nome"
-          value={formTesserato.nome}
-          onChange={(e) =>
-            setFormTesserato({ ...formTesserato, nome: e.target.value })
-          }
-        />
+        <div className="space-y-2">
+          <input
+            type="text"
+            className="border border-white/20 p-2 rounded w-full bg-white/10 text-white placeholder-white/50"
+            placeholder="Nome"
+            value={formTesserato.nome}
+            onChange={(e) =>
+              setFormTesserato({ ...formTesserato, nome: e.target.value })
+            }
+          />
 
-        <input
-          type="text"
-          className="border p-2 rounded w-full bg-white/20 text-white mt-2"
-          placeholder="Cognome"
-          value={formTesserato.cognome}
-          onChange={(e) =>
-            setFormTesserato({ ...formTesserato, cognome: e.target.value })
-          }
-        />
+          <input
+            type="text"
+            className="border border-white/20 p-2 rounded w-full bg-white/10 text-white placeholder-white/50"
+            placeholder="Cognome"
+            value={formTesserato.cognome}
+            onChange={(e) =>
+              setFormTesserato({ ...formTesserato, cognome: e.target.value })
+            }
+          />
 
-        <input
-          type="email"
-          className="border p-2 rounded w-full bg-white/20 text-white mt-2"
-          placeholder="Email"
-          value={formTesserato.email}
-          onChange={(e) =>
-            setFormTesserato({ ...formTesserato, email: e.target.value })
-          }
-        />
+          <input
+            type="email"
+            className="border border-white/20 p-2 rounded w-full bg-white/10 text-white placeholder-white/50"
+            placeholder="Email"
+            value={formTesserato.email}
+            onChange={(e) =>
+              setFormTesserato({ ...formTesserato, email: e.target.value })
+            }
+          />
+        </div>
 
         <button
           onClick={addTesserato}
-          className="mt-2 px-4 py-2 bg-blue-600 rounded"
+          className="mt-2 px-4 py-2 bg-blue-600 rounded hover:bg-blue-500 transition"
         >
           Aggiungi tesserato
         </button>
@@ -199,39 +267,41 @@ export default function Admin() {
       <section className="bg-white/10 p-4 rounded-lg">
         <h2 className="text-xl font-bold mb-2">Soci</h2>
 
-        <input
-          type="text"
-          className="border p-2 rounded w-full bg-white/20 text-white"
-          placeholder="Nome"
-          value={formSocio.nome}
-          onChange={(e) =>
-            setFormSocio({ ...formSocio, nome: e.target.value })
-          }
-        />
+        <div className="space-y-2">
+          <input
+            type="text"
+            className="border border-white/20 p-2 rounded w-full bg-white/10 text-white placeholder-white/50"
+            placeholder="Nome"
+            value={formSocio.nome}
+            onChange={(e) =>
+              setFormSocio({ ...formSocio, nome: e.target.value })
+            }
+          />
 
-        <input
-          type="text"
-          className="border p-2 rounded w-full bg-white/20 text-white mt-2"
-          placeholder="Cognome"
-          value={formSocio.cognome}
-          onChange={(e) =>
-            setFormSocio({ ...formSocio, cognome: e.target.value })
-          }
-        />
+          <input
+            type="text"
+            className="border border-white/20 p-2 rounded w-full bg-white/10 text-white placeholder-white/50"
+            placeholder="Cognome"
+            value={formSocio.cognome}
+            onChange={(e) =>
+              setFormSocio({ ...formSocio, cognome: e.target.value })
+            }
+          />
 
-        <input
-          type="email"
-          className="border p-2 rounded w-full bg-white/20 text-white mt-2"
-          placeholder="Email"
-          value={formSocio.email}
-          onChange={(e) =>
-            setFormSocio({ ...formSocio, email: e.target.value })
-          }
-        />
+          <input
+            type="email"
+            className="border border-white/20 p-2 rounded w-full bg-white/10 text-white placeholder-white/50"
+            placeholder="Email"
+            value={formSocio.email}
+            onChange={(e) =>
+              setFormSocio({ ...formSocio, email: e.target.value })
+            }
+          />
+        </div>
 
         <button
           onClick={addSocio}
-          className="mt-2 px-4 py-2 bg-blue-600 rounded"
+          className="mt-2 px-4 py-2 bg-blue-600 rounded hover:bg-blue-500 transition"
         >
           Aggiungi socio
         </button>
@@ -249,29 +319,31 @@ export default function Admin() {
       <section className="bg-white/10 p-4 rounded-lg">
         <h2 className="text-xl font-bold mb-2">Pacchetti</h2>
 
-        <input
-          type="text"
-          className="border p-2 rounded w-full bg-white/20 text-white"
-          placeholder="Nome pacchetto"
-          value={formPacchetto.nome}
-          onChange={(e) =>
-            setFormPacchetto({ ...formPacchetto, nome: e.target.value })
-          }
-        />
+        <div className="space-y-2">
+          <input
+            type="text"
+            className="border border-white/20 p-2 rounded w-full bg-white/10 text-white placeholder-white/50"
+            placeholder="Nome pacchetto"
+            value={formPacchetto.nome}
+            onChange={(e) =>
+              setFormPacchetto({ ...formPacchetto, nome: e.target.value })
+            }
+          />
 
-        <input
-          type="number"
-          className="border p-2 rounded w-full bg-white/20 text-white mt-2"
-          placeholder="Prezzo"
-          value={formPacchetto.prezzo}
-          onChange={(e) =>
-            setFormPacchetto({ ...formPacchetto, prezzo: e.target.value })
-          }
-        />
+          <input
+            type="number"
+            className="border border-white/20 p-2 rounded w-full bg-white/10 text-white placeholder-white/50"
+            placeholder="Prezzo (€)"
+            value={formPacchetto.prezzo}
+            onChange={(e) =>
+              setFormPacchetto({ ...formPacchetto, prezzo: e.target.value })
+            }
+          />
+        </div>
 
         <button
           onClick={addPacchetto}
-          className="mt-2 px-4 py-2 bg-blue-600 rounded"
+          className="mt-2 px-4 py-2 bg-blue-600 rounded hover:bg-blue-500 transition"
         >
           Aggiungi pacchetto
         </button>
@@ -289,38 +361,40 @@ export default function Admin() {
       <section className="bg-white/10 p-4 rounded-lg">
         <h2 className="text-xl font-bold mb-2">Movimenti</h2>
 
-        <input
-          type="text"
-          className="border p-2 rounded w-full bg-white/20 text-white"
-          placeholder="Descrizione"
-          value={formMovimento.descrizione}
-          onChange={(e) =>
-            setFormMovimento({ ...formMovimento, descrizione: e.target.value })
-          }
-        />
+        <div className="space-y-2">
+          <input
+            type="text"
+            className="border border-white/20 p-2 rounded w-full bg-white/10 text-white placeholder-white/50"
+            placeholder="Descrizione"
+            value={formMovimento.descrizione}
+            onChange={(e) =>
+              setFormMovimento({ ...formMovimento, descrizione: e.target.value })
+            }
+          />
 
-        <input
-          type="number"
-          className="border p-2 rounded w-full bg-white/20 text-white mt-2"
-          placeholder="Importo"
-          value={formMovimento.importo}
-          onChange={(e) =>
-            setFormMovimento({ ...formMovimento, importo: e.target.value })
-          }
-        />
+          <input
+            type="number"
+            className="border border-white/20 p-2 rounded w-full bg-white/10 text-white placeholder-white/50"
+            placeholder="Importo (€)"
+            value={formMovimento.importo}
+            onChange={(e) =>
+              setFormMovimento({ ...formMovimento, importo: e.target.value })
+            }
+          />
 
-        <input
-          type="date"
-          className="border p-2 rounded w-full bg-white/20 text-white mt-2"
-          value={formMovimento.data}
-          onChange={(e) =>
-            setFormMovimento({ ...formMovimento, data: e.target.value })
-          }
-        />
+          <input
+            type="date"
+            className="border border-white/20 p-2 rounded w-full bg-white/10 text-white"
+            value={formMovimento.data}
+            onChange={(e) =>
+              setFormMovimento({ ...formMovimento, data: e.target.value })
+            }
+          />
+        </div>
 
         <button
           onClick={addMovimento}
-          className="mt-2 px-4 py-2 bg-blue-600 rounded"
+          className="mt-2 px-4 py-2 bg-blue-600 rounded hover:bg-blue-500 transition"
         >
           Aggiungi movimento
         </button>
@@ -334,19 +408,44 @@ export default function Admin() {
         </ul>
       </section>
 
-           {/* SEZIONE RICEVUTE */}
-      <section className="bg-white/10 p-4 rounded-lg mt-6">
-        <h2 className="text-xl font-bold text-white">Ricevute</h2>
+      {/* SEZIONE RICEVUTE */}
+      <section className="bg-white/10 p-4 rounded-lg">
+        <h2 className="text-xl font-bold mb-2">Ricevute</h2>
 
-        <div className="mt-2 space-y-2">
+        <div className="space-y-2">
+          {/* Seleziona Persona (Socio o Tesserato) */}
+          <select
+            value={formRicevuta.persona_id}
+            onChange={(e) =>
+              setFormRicevuta({ ...formRicevuta, persona_id: e.target.value })
+            }
+            className="p-2 rounded bg-white/10 text-white w-full border border-white/20 [&>option]:text-black"
+          >
+            <option value="">Seleziona Intestatario (Opzionale)</option>
+            <optgroup label="Soci">
+              {soci.map((s) => (
+                <option key={`socio-${s.id}`} value={s.id}>
+                  {s.nome} {s.cognome} (Socio)
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Tesserati">
+              {tesserati.map((t) => (
+                <option key={`tess-${t.id}`} value={t.id}>
+                  {t.nome} {t.cognome} (Tesserato)
+                </option>
+              ))}
+            </optgroup>
+          </select>
+
           <input
             type="number"
-            placeholder="Importo"
+            placeholder="Importo (€)"
             value={formRicevuta.importo}
             onChange={(e) =>
               setFormRicevuta({ ...formRicevuta, importo: e.target.value })
             }
-            className="px-3 py-2 rounded bg-white/10 text-white w-full"
+            className="p-2 rounded bg-white/10 text-white placeholder-white/50 w-full border border-white/20"
           />
 
           <input
@@ -355,13 +454,13 @@ export default function Admin() {
             onChange={(e) =>
               setFormRicevuta({ ...formRicevuta, data: e.target.value })
             }
-            className="px-3 py-2 rounded bg-white/10 text-white w-full"
+            className="p-2 rounded bg-white/10 text-white w-full border border-white/20"
           />
         </div>
 
         <button
           onClick={addRicevuta}
-          className="mt-2 px-4 py-2 bg-blue-600 rounded"
+          className="mt-2 px-4 py-2 bg-blue-600 rounded hover:bg-blue-500 transition"
         >
           Aggiungi ricevuta
         </button>
