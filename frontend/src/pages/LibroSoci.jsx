@@ -3,10 +3,10 @@ import { api } from "../lib/api";
 
 export default function LibroSoci() {
   const [soci, setSoci] = useState([]);
+  const [quote, setQuote] = useState([]);
   const [filtroNome, setFiltroNome] = useState("");
   const [filtroStato, setFiltroStato] = useState("");
 
-  const [quote, setQuote] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [formQuota, setFormQuota] = useState({
     socio_id: "",
@@ -15,19 +15,24 @@ export default function LibroSoci() {
   });
 
   // -------------------------------
-  // LOAD SOCI
+  // LOAD DATA
   // -------------------------------
   const loadSoci = async () => {
-    const res = await api.get("/soci");
-    setSoci(res.data);
+    try {
+      const res = await api.get("/soci");
+      setSoci(res.data);
+    } catch (error) {
+      console.error("Errore nel caricamento dei soci:", error);
+    }
   };
 
-  // -------------------------------
-  // LOAD QUOTE
-  // -------------------------------
   const loadQuote = async () => {
-    const res = await api.get("/quote");
-    setQuote(res.data);
+    try {
+      const res = await api.get("/quote");
+      setQuote(res.data);
+    } catch (error) {
+      console.error("Errore nel caricamento delle quote:", error);
+    }
   };
 
   useEffect(() => {
@@ -36,30 +41,61 @@ export default function LibroSoci() {
   }, []);
 
   // -------------------------------
+  // HELPER PER VERIFICA REGOLARITÀ
+  // -------------------------------
+  const checkInRegola = (socioId) => {
+    return quote.some(
+      (q) => Number(q.socio_id) === Number(socioId)
+    );
+  };
+
+  // -------------------------------
   // FILTRI
   // -------------------------------
   const sociFiltrati = soci.filter((s) => {
-    return (
-      (filtroNome
-        ? s.nome.toLowerCase().includes(filtroNome.toLowerCase())
-        : true) &&
-      (filtroStato ? s.stato === filtroStato : true)
-    );
+    const matchNome = filtroNome
+      ? `${s.nome} ${s.cognome}`
+          .toLowerCase()
+          .includes(filtroNome.toLowerCase())
+      : true;
+
+    const inRegola = checkInRegola(s.id);
+    const matchStato =
+      filtroStato === "in_regola"
+        ? inRegola
+        : filtroStato === "non_in_regola"
+        ? !inRegola
+        : true;
+
+    return matchNome && matchStato;
   });
 
   // -------------------------------
   // ADD QUOTA
   // -------------------------------
   const addQuota = async () => {
-    await api.post("/quote", {
-socio_id: Number(formQuota.socio_id),
-importo: Number(formQuota.importo),
-data: formQuota.data,
-});
+    if (!formQuota.socio_id || !formQuota.importo || !formQuota.data) {
+      alert("Compila tutti i campi!");
+      return;
+    }
 
-    setShowModal(false);
-    setFormQuota({ socio_id: "", importo: "", data: "" });
-    loadQuote();
+    try {
+      await api.post("/quote", {
+        socio_id: Number(formQuota.socio_id),
+        importo: Number(formQuota.importo),
+        data: formQuota.data,
+      });
+
+      setShowModal(false);
+      setFormQuota({
+        socio_id: "",
+        importo: "",
+        data: "",
+      });
+      loadQuote();
+    } catch (error) {
+      console.error("Errore nel salvataggio della quota:", error);
+    }
   };
 
   // -------------------------------
@@ -67,7 +103,9 @@ data: formQuota.data,
   // -------------------------------
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-white">Libro Soci</h1>
+      <h1 className="text-2xl font-bold text-white">
+        Libro Soci
+      </h1>
 
       {/* FILTRI */}
       <div className="flex gap-4">
@@ -76,13 +114,13 @@ data: formQuota.data,
           placeholder="Cerca per nome…"
           value={filtroNome}
           onChange={(e) => setFiltroNome(e.target.value)}
-          className="px-4 py-2 rounded bg-white/10 text-white"
+          className="px-4 py-2 rounded bg-white/10 text-white placeholder-white/50"
         />
 
         <select
           value={filtroStato}
           onChange={(e) => setFiltroStato(e.target.value)}
-          className="px-4 py-2 rounded bg-white/10 text-white"
+          className="px-4 py-2 rounded bg-white/10 text-white [&>option]:text-black"
         >
           <option value="">Tutti</option>
           <option value="in_regola">In regola</option>
@@ -92,47 +130,61 @@ data: formQuota.data,
 
       {/* LISTA SOCI */}
       <div className="space-y-2">
-        {sociFiltrati.map((s) => (
-          <div
-            key={s.id}
-            className="p-4 bg-white/10 rounded-lg hover:bg-white/20 transition"
-          >
-            <div className="font-medium text-white">
-              {s.nome} {s.cognome}
-            </div>
-            <div className="text-sm text-white/60">{s.email}</div>
+        {sociFiltrati.map((s) => {
+          const inRegola = checkInRegola(s.id);
 
-            {/* Stato quota */}
-            <div className="text-xs text-white/50 mt-1">
-             quote.some((q) => Number(q.socio_id) === Number(s.id))
-                ? "🟢 In regola"
-                : "🔴 Non in regola"}
-            </div>
-
-            <button
-              className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-xs"
-              onClick={() => {
-                setFormQuota({ ...formQuota, socio_id: s.id });
-                setShowModal(true);
-              }}
+          return (
+            <div
+              key={s.id}
+              className="p-4 bg-white/10 rounded-lg hover:bg-white/20 transition flex justify-between items-center"
             >
-              Aggiungi quota
-            </button>
-          </div>
-        ))}
+              <div>
+                <div className="font-medium text-white">
+                  {s.nome} {s.cognome}
+                </div>
+                <div className="text-sm text-white/60">
+                  {s.email}
+                </div>
+
+                {/* Stato quota corretta con parentesi graffe */}
+                <div className="text-xs text-white/50 mt-1">
+                  {inRegola ? "🟢 In regola" : "🔴 Non in regola"}
+                </div>
+              </div>
+
+              <button
+                className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-500 transition"
+                onClick={() => {
+                  setFormQuota({
+                    ...formQuota,
+                    socio_id: s.id,
+                  });
+                  setShowModal(true);
+                }}
+              >
+                Aggiungi quota
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {/* MODALE NUOVA QUOTA */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded w-80 space-y-4">
-            <h2 className="text-xl font-bold">Aggiungi quota</h2>
+          <div className="bg-white p-6 rounded w-80 space-y-4 text-gray-900">
+            <h2 className="text-xl font-bold">
+              Aggiungi quota
+            </h2>
 
             <select
               className="border p-2 w-full rounded"
               value={formQuota.socio_id}
               onChange={(e) =>
-                setFormQuota({ ...formQuota, socio_id: e.target.value })
+                setFormQuota({
+                  ...formQuota,
+                  socio_id: e.target.value,
+                })
               }
             >
               <option value="">Seleziona socio</option>
@@ -149,7 +201,10 @@ data: formQuota.data,
               placeholder="Importo"
               value={formQuota.importo}
               onChange={(e) =>
-                setFormQuota({ ...formQuota, importo: e.target.value })
+                setFormQuota({
+                  ...formQuota,
+                  importo: e.target.value,
+                })
               }
             />
 
@@ -158,20 +213,23 @@ data: formQuota.data,
               className="border p-2 w-full rounded"
               value={formQuota.data}
               onChange={(e) =>
-                setFormQuota({ ...formQuota, data: e.target.value })
+                setFormQuota({
+                  ...formQuota,
+                  data: e.target.value,
+                })
               }
             />
 
             <div className="flex justify-end gap-2">
               <button
-                className="px-4 py-2 bg-gray-300 rounded"
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition"
                 onClick={() => setShowModal(false)}
               >
                 Annulla
               </button>
 
               <button
-                className="px-4 py-2 bg-blue-600 text-white rounded"
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 transition"
                 onClick={addQuota}
               >
                 Salva
