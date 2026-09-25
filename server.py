@@ -305,7 +305,74 @@ def add_abbonamento(data: dict):
 
     return {"ok": True, "id": a.id}
 
-
+class Quota(Base):
+__tablename__ = "quote"
+ 
+id = Column(Integer, primary_key=True, index=True)
+socio_id = Column(Integer, nullable=False)
+importo = Column(Integer, nullable=False)
+data = Column(String, nullable=False)
+# ---------------------------------------------------------
+# QUOTE ASSOCIATIVE
+# ---------------------------------------------------------
+ 
+@app.get("/quote")
+def get_quote():
+session = db()
+ 
+quote = session.query(Quota).all()
+ 
+return [
+{
+"id": q.id,
+"socio_id": q.socio_id,
+"importo": q.importo,
+"data": q.data,
+}
+for q in quote
+]
+ 
+ 
+@app.post("/quote")
+def add_quota(data: dict):
+socio_id = data.get("socio_id")
+importo = data.get("importo")
+data_quota = data.get("data")
+ 
+if not socio_id:
+raise HTTPException(
+status_code=400,
+detail="socio_id mancante"
+)
+ 
+if not importo:
+raise HTTPException(
+status_code=400,
+detail="importo mancante"
+)
+ 
+if not data_quota:
+raise HTTPException(
+status_code=400,
+detail="data mancante"
+)
+ 
+session = db()
+ 
+quota = Quota(
+socio_id=socio_id,
+importo=importo,
+data=data_quota
+)
+ 
+session.add(quota)
+session.commit()
+session.refresh(quota)
+ 
+return {
+"ok": True,
+"id": quota.id
+}
 # ---------------------------------------------------------
 # DASHBOARD
 # ---------------------------------------------------------
