@@ -1,68 +1,66 @@
-// frontend/src/lib/auth.jsx
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { api } from "./api";
 
-const AuthCtx = createContext(null);
+const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(null); // null = loading, false = non loggato, object = loggato
 
-  // Carica utente al caricamento dell'app
-  useEffect(() => {
-    (async () => {
+  const loadUser = async () => {
+    try {
+      const res = await api.get("/api/auth/me");
+      setUser(res.data);
+    } catch (err) {
+      // Se fallisce il recupero dell'utente loggato, prova senza /api per fallback
       try {
-        // Leggi profilo salvato
-        const profilo = JSON.parse(localStorage.getItem("profilo"));
-
-        if (!profilo || !profilo.id) {
-          setUser(false);
-          return;
-        }
-
-        // CHIAMATA CORRETTA (senza doppio /api)
-        const { data } = await api.get(`/auth/me?id=${profilo.id}`);
-        setUser(data);
-      } catch (err) {
-        console.error("Errore /auth/me:", err);
+        const resFallback = await api.get("/auth/me");
+        setUser(resFallback.data);
+      } catch (e) {
         setUser(false);
       }
-    })();
+    }
+  };
+
+  useEffect(() => {
+    loadUser();
   }, []);
 
-  // LOGIN
   const login = async (email, password) => {
+    // Tenta la chiamata alla rotta corretta POST /api/auth/login
+    const payload = { username: email, email: email, password: password };
+    
     try {
-      // CHIAMATA CORRETTA (senza doppio /api)
-      const { data } = await api.post("/auth/login", { email, password });
-
-      // Salva il profilo completo
-      localStorage.setItem("profilo", JSON.stringify(data));
-
-      // Imposta utente
-      setUser(data);
-
-      return data;
+      const res = await api.post("/api/auth/login", payload);
+      setUser(res.data);
+      return res.data;
     } catch (err) {
-      console.error("Errore login:", err);
+      // Se per qualsiasi ragione fallisce /api/auth/login, fa il fallback su /auth/login
+      if (err.response?.status === 404) {
+        const resFallback = await api.post("/auth/login", payload);
+        setUser(resFallback.data);
+        return resFallback.data;
+      }
       throw err;
     }
   };
 
-  // LOGOUT
   const logout = async () => {
     try {
-      await api.post("/auth/logout");
-    } catch {}
-
-    localStorage.removeItem("profilo");
-    setUser(false);
+      await api.post("/api/auth/logout");
+    } catch (err) {
+      console.warn("Logout error:", err);
+    } finally {
+      setUser(false);
+    }
   };
 
   return (
-    <AuthCtx.Provider value={{ user, setUser, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, refreshUser: loadUser }}>
       {children}
-    </AuthCtx.Provider>
+    </AuthContext.Provider>
   );
 }
 
-export const useAuth = () => useContext(AuthCtx);
+export function useAuth() {
+  return useContext(AuthContext);
+}
