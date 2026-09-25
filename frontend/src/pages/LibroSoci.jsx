@@ -14,68 +14,46 @@ export default function LibroSoci() {
     data: "",
   });
 
-  // -------------------------------
-  // LOAD DATA
-  // -------------------------------
-  const loadSoci = async () => {
+  const loadData = async () => {
     try {
-      const res = await api.get("/soci");
-      setSoci(res.data);
+      const [resSoci, resQuote] = await Promise.all([
+        api.get("/soci"),
+        api.get("/quote"),
+      ]);
+      setSoci(resSoci.data);
+      setQuote(resQuote.data);
     } catch (error) {
-      console.error("Errore nel caricamento dei soci:", error);
-    }
-  };
-
-  const loadQuote = async () => {
-    try {
-      const res = await api.get("/quote");
-      setQuote(res.data);
-    } catch (error) {
-      console.error("Errore nel caricamento delle quote:", error);
+      console.error("Errore nel caricamento dei dati:", error);
     }
   };
 
   useEffect(() => {
-    loadSoci();
-    loadQuote();
+    loadData();
   }, []);
 
-  // -------------------------------
-  // HELPER PER VERIFICA REGOLARITÀ
-  // -------------------------------
-  const checkInRegola = (socioId) => {
-    return quote.some(
-      (q) => Number(q.socio_id) === Number(socioId)
-    );
+  const isSocioInRegola = (socioId) => {
+    return quote.some((q) => Number(q.socio_id) === Number(socioId));
   };
 
-  // -------------------------------
-  // FILTRI
-  // -------------------------------
   const sociFiltrati = soci.filter((s) => {
-    const matchNome = filtroNome
-      ? `${s.nome} ${s.cognome}`
-          .toLowerCase()
-          .includes(filtroNome.toLowerCase())
+    const corrispondeNome = filtroNome
+      ? `${s.nome} ${s.cognome}`.toLowerCase().includes(filtroNome.toLowerCase())
       : true;
 
-    const inRegola = checkInRegola(s.id);
-    const matchStato =
+    const inRegola = isSocioInRegola(s.id);
+    const corrispondeStato =
       filtroStato === "in_regola"
         ? inRegola
         : filtroStato === "non_in_regola"
         ? !inRegola
         : true;
 
-    return matchNome && matchStato;
+    return corrispondeNome && corrispondeStato;
   });
 
-  // -------------------------------
-  // ADD QUOTA
-  // -------------------------------
   const addQuota = async () => {
     if (!formQuota.socio_id || !formQuota.importo || !formQuota.data) {
-      alert("Compila tutti i campi!");
+      alert("Compila tutti i campi prima di salvare.");
       return;
     }
 
@@ -87,31 +65,21 @@ export default function LibroSoci() {
       });
 
       setShowModal(false);
-      setFormQuota({
-        socio_id: "",
-        importo: "",
-        data: "",
-      });
-      loadQuote();
+      setFormQuota({ socio_id: "", importo: "", data: "" });
+      loadData();
     } catch (error) {
-      console.error("Errore nel salvataggio della quota:", error);
+      console.error("Errore durante il salvataggio della quota:", error);
     }
   };
 
-  // -------------------------------
-  // RENDER
-  // -------------------------------
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-white">
-        Libro Soci
-      </h1>
+      <h1 className="text-2xl font-bold text-white">Libro Soci</h1>
 
-      {/* FILTRI */}
       <div className="flex gap-4">
         <input
           type="text"
-          placeholder="Cerca per nome…"
+          placeholder="Cerca per nome o cognome…"
           value={filtroNome}
           onChange={(e) => setFiltroNome(e.target.value)}
           className="px-4 py-2 rounded bg-white/10 text-white placeholder-white/50"
@@ -128,11 +96,9 @@ export default function LibroSoci() {
         </select>
       </div>
 
-      {/* LISTA SOCI */}
       <div className="space-y-2">
         {sociFiltrati.map((s) => {
-          const inRegola = checkInRegola(s.id);
-
+          const inRegola = isSocioInRegola(s.id);
           return (
             <div
               key={s.id}
@@ -142,12 +108,9 @@ export default function LibroSoci() {
                 <div className="font-medium text-white">
                   {s.nome} {s.cognome}
                 </div>
-                <div className="text-sm text-white/60">
-                  {s.email}
-                </div>
+                <div className="text-sm text-white/60">{s.email}</div>
 
-                {/* Stato quota corretta con parentesi graffe */}
-                <div className="text-xs text-white/50 mt-1">
+                <div className="text-xs text-white/70 mt-1">
                   {inRegola ? "🟢 In regola" : "🔴 Non in regola"}
                 </div>
               </div>
@@ -155,10 +118,7 @@ export default function LibroSoci() {
               <button
                 className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-500 transition"
                 onClick={() => {
-                  setFormQuota({
-                    ...formQuota,
-                    socio_id: s.id,
-                  });
+                  setFormQuota({ ...formQuota, socio_id: s.id });
                   setShowModal(true);
                 }}
               >
@@ -169,22 +129,16 @@ export default function LibroSoci() {
         })}
       </div>
 
-      {/* MODALE NUOVA QUOTA */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
           <div className="bg-white p-6 rounded w-80 space-y-4 text-gray-900">
-            <h2 className="text-xl font-bold">
-              Aggiungi quota
-            </h2>
+            <h2 className="text-xl font-bold">Aggiungi quota</h2>
 
             <select
               className="border p-2 w-full rounded"
               value={formQuota.socio_id}
               onChange={(e) =>
-                setFormQuota({
-                  ...formQuota,
-                  socio_id: e.target.value,
-                })
+                setFormQuota({ ...formQuota, socio_id: e.target.value })
               }
             >
               <option value="">Seleziona socio</option>
@@ -201,10 +155,7 @@ export default function LibroSoci() {
               placeholder="Importo"
               value={formQuota.importo}
               onChange={(e) =>
-                setFormQuota({
-                  ...formQuota,
-                  importo: e.target.value,
-                })
+                setFormQuota({ ...formQuota, importo: e.target.value })
               }
             />
 
@@ -213,10 +164,7 @@ export default function LibroSoci() {
               className="border p-2 w-full rounded"
               value={formQuota.data}
               onChange={(e) =>
-                setFormQuota({
-                  ...formQuota,
-                  data: e.target.value,
-                })
+                setFormQuota({ ...formQuota, data: e.target.value })
               }
             />
 
