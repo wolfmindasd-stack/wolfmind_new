@@ -14,23 +14,33 @@ export default function Login() {
   const [error, setError] = useState("");
 
   const login = async (e) => {
-    if (e) e.preventDefault(); // Previene il submit di default del form
+    if (e) e.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      // Modificato il path aggiungendo /api per combaciare con la rotta del backend
-      const res = await api.post("/api/auth/login", form);
+      // Inviamo sia 'username' che 'email' nel JSON per garantire compatibilità con lo schema Pydantic/FastAPI
+      const payload = {
+        username: form.email,
+        email: form.email,
+        password: form.password,
+      };
 
-      // Salva il profilo e il ruolo nel localStorage
+      const res = await api.post("/api/auth/login", payload);
+
+      // Salva il profilo e il token
       localStorage.setItem("user", JSON.stringify(res.data));
+      if (res.data.access_token) {
+        localStorage.setItem("token", res.data.access_token);
+      }
       if (res.data.ruolo) {
         localStorage.setItem("ruolo", res.data.ruolo);
       }
 
       navigate("/dashboard");
     } catch (err) {
-      setError(formatApiErrorDetail(err) || "Credenziali non valide");
+      console.error("Errore Login:", err.response?.data);
+      setError(formatApiErrorDetail(err) || "Credenziali non valide o errore di formato");
     } finally {
       setLoading(false);
     }
