@@ -14,7 +14,7 @@ export const fmtEur = (value) =>
     currency: "EUR",
   }).format(value || 0);
 
-// Formattazione data (richiesta da Admin.jsx)
+// Formattazione data it-IT (es. 25/09/2026)
 export const fmtDate = (dateStr) => {
   if (!dateStr) return "";
   try {
@@ -22,6 +22,11 @@ export const fmtDate = (dateStr) => {
   } catch (e) {
     return dateStr;
   }
+};
+
+// Data odierna in formato ISO YYYY-MM-DD
+export const todayIso = () => {
+  return new Date().toISOString().split("T")[0];
 };
 
 // Gestione errori API
