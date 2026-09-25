@@ -104,7 +104,7 @@ data: formQuota.data,
 
             {/* Stato quota */}
             <div className="text-xs text-white/50 mt-1">
-              {quote.some((q) => q.socio_id === s.id)
+             quote.some((q) => Number(q.socio_id) === Number(s.id))
                 ? "🟢 In regola"
                 : "🔴 Non in regola"}
             </div>
