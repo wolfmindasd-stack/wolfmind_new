@@ -83,11 +83,12 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-    "https://wolfmind-new.pages.dev",
-    "https://bfc432bf.wolfmind-new.pages.dev",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000"
-],
+        "https://wolfmind-new.pages.dev",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    ],
+    # Autorizza qualsiasi URL di anteprima *.wolfmind-new.pages.dev
+    allow_origin_regex=r"https://.*\.wolfmind-new\.pages\.dev",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
