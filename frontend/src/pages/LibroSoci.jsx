@@ -52,9 +52,10 @@ export default function LibroSoci() {
   // -------------------------------
   const addQuota = async () => {
     await api.post("/quote", {
-      ...formQuota,
-      socio_id: Number(formQuota.socio_id),
-    });
+socio_id: Number(formQuota.socio_id),
+importo: Number(formQuota.importo),
+data: formQuota.data,
+});
 
     setShowModal(false);
     setFormQuota({ socio_id: "", importo: "", data: "" });
