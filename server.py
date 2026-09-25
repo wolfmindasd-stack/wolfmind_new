@@ -48,14 +48,15 @@ class Profilo(Base):
 
 
 class Abbonamento(Base):
-    __tablename__ = "abbonamenti"
-    id = Column(Integer, primary_key=True, index=True)
-    socio_id = Column(Integer)
-    tipo = Column(String)
-    stato = Column(String)
-    data_inizio = Column(DateTime)
-    data_fine = Column(DateTime)
-
+__tablename__ = "abbonamenti"
+id = Column(Integer, primary_key=True, index=True)
+socio_id = Column(Integer)
+tipo = Column(String)
+stato = Column(String)
+data_inizio = Column(DateTime)
+data_fine = Column(DateTime)
+ 
+ 
 class Quota(Base):
 __tablename__ = "quote"
  
@@ -63,13 +64,15 @@ id = Column(Integer, primary_key=True, index=True)
 socio_id = Column(Integer, nullable=False)
 importo = Column(Integer, nullable=False)
 data = Column(String, nullable=False)
+ 
+ 
 Base.metadata.create_all(bind=engine)
-
-
+ 
+ 
 # ---------------------------------------------------------
 # APP
 # ---------------------------------------------------------
-
+ 
 app = FastAPI()
 
 
