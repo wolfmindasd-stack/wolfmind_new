@@ -7,15 +7,26 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null); // null = loading, false = non loggato, object = loggato
 
   const loadUser = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setUser(false);
+      return;
+    }
+
     try {
-      const res = await api.get("/api/auth/me");
+      // Impostiamo l'header Authorization per le chiamate successive
+      const res = await api.get("/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setUser(res.data);
     } catch (err) {
-      // Se fallisce il recupero dell'utente loggato, prova senza /api per fallback
       try {
-        const resFallback = await api.get("/auth/me");
+        const resFallback = await api.get("/auth/me", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         setUser(resFallback.data);
       } catch (e) {
+        localStorage.removeItem("token");
         setUser(false);
       }
     }
@@ -26,22 +37,31 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    // Tenta la chiamata alla rotta corretta POST /api/auth/login
     const payload = { username: email, email: email, password: password };
     
+    // Tenta il login
+    let authData;
     try {
       const res = await api.post("/api/auth/login", payload);
-      setUser(res.data);
-      return res.data;
+      authData = res.data;
     } catch (err) {
-      // Se per qualsiasi ragione fallisce /api/auth/login, fa il fallback su /auth/login
       if (err.response?.status === 404) {
         const resFallback = await api.post("/auth/login", payload);
-        setUser(resFallback.data);
-        return resFallback.data;
+        authData = resFallback.data;
+      } else {
+        throw err;
       }
-      throw err;
     }
+
+    // Salva il token se presente o salva l'oggetto utente
+    const token = authData.access_token || authData.token || authData.id;
+    if (token) {
+      localStorage.setItem("token", token);
+    }
+    
+    localStorage.setItem("user", JSON.stringify(authData));
+    setUser(authData);
+    return authData;
   };
 
   const logout = async () => {
@@ -50,6 +70,8 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.warn("Logout error:", err);
     } finally {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
       setUser(false);
     }
   };
