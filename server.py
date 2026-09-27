@@ -58,7 +58,6 @@ stato = Column(String)
 data_inizio = Column(DateTime)
 data_fine = Column(DateTime)
  
- 
 class Quota(Base):
 __tablename__ = "quote"
  
