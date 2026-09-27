@@ -1,10 +1,7 @@
 import React, { useState } from "react";
 import { api, formatApiErrorDetail } from "../lib/api";
-import { useNavigate } from "react-router-dom";
 
 export default function Login() {
-  const navigate = useNavigate();
-
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -19,7 +16,6 @@ export default function Login() {
     setError("");
 
     try {
-      // Inviamo sia 'username' che 'email' nel JSON per garantire compatibilità con lo schema Pydantic/FastAPI
       const payload = {
         username: form.email,
         email: form.email,
@@ -28,7 +24,7 @@ export default function Login() {
 
       const res = await api.post("/api/auth/login", payload);
 
-      // Salva il profilo e il token
+      // Salva il profilo e i token di sessione
       localStorage.setItem("user", JSON.stringify(res.data));
       if (res.data.access_token) {
         localStorage.setItem("token", res.data.access_token);
@@ -37,7 +33,8 @@ export default function Login() {
         localStorage.setItem("ruolo", res.data.ruolo);
       }
 
-      navigate("/dashboard");
+      // Reindirizzamento forzato per sincronizzare lo stato di autenticazione dell'app
+      window.location.href = "/";
     } catch (err) {
       console.error("Errore Login:", err.response?.data);
       setError(formatApiErrorDetail(err) || "Credenziali non valide o errore di formato");
