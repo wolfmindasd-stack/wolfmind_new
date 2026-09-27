@@ -66,7 +66,73 @@ class Quota(Base):
     data = Column(String, nullable=False)
 
 
+class Compenso(Base):
+    __tablename__ = "compensi"
+    id = Column(Integer, primary_key=True, index=True)
+    titolo = Column(String)
+    importo = Column(Integer)
+
+
+class Movimento(Base):
+    __tablename__ = "movimenti"
+    id = Column(Integer, primary_key=True, index=True)
+    descrizione = Column(String)
+    importo = Column(Integer)
+
+
+class Ricevuta(Base):
+    __tablename__ = "ricevute"
+    id = Column(Integer, primary_key=True, index=True)
+    numero = Column(String)
+
+
+class Pacchetto(Base):
+    __tablename__ = "pacchetti"
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String)
+
+
+class Evento(Base):
+    __tablename__ = "eventi"
+    id = Column(Integer, primary_key=True, index=True)
+    titolo = Column(String)
+
+
 Base.metadata.create_all(bind=engine)
+
+
+# ---------------------------------------------------------
+# CREAZIONE / AGGIORNAMENTO UTENTE ADMIN AUTOMATICO
+# ---------------------------------------------------------
+
+def init_db():
+    session = db()
+    try:
+        user = session.query(Profilo).filter_by(email="admin@wolfmind.com").first()
+        if not user:
+            # Se non esiste, crea l'utente admin
+            admin = Profilo(
+                nome="Admin WolfMind",
+                email="admin@wolfmind.com",
+                password="admin",
+                telefono="3331234567",
+                ruolo="admin",
+                avatar_url=""
+            )
+            session.add(admin)
+            print("=== UTENTE ADMIN CREATO CON SUCCESSO ===")
+        else:
+            # Se esiste già, aggiorna il ruolo ad admin
+            user.ruolo = "admin"
+            print("=== RUOLO UTENTE AGGIORNATO AD ADMIN ===")
+        
+        session.commit()
+    except Exception as e:
+        print("Errore aggiornamento admin:", e)
+    finally:
+        session.close()
+
+init_db()
 
 
 # ---------------------------------------------------------
@@ -254,7 +320,7 @@ def create_profilo(data: dict):
         nome=data.get("nome"),
         email=data.get("email"),
         telefono=data.get("telefono"),
-        ruolo=data.get("ruolo"),
+        ruolo=data.get("ruolo", "admin"),
         avatar_url=data.get("avatar_url"),
         password=data.get("password")
     )
@@ -353,67 +419,24 @@ def add_quota(data: dict):
     importo = data.get("importo")
     data_quota = data.get("data")
 
-    if not socio_id:
-        raise HTTPException(status_code=400, detail="socio_id mancante")
-
-    if not importo:
-        raise HTTPException(status_code=400, detail="importo mancante")
-
-    if not data_quota:
-        raise HTTPException(status_code=400, detail="data mancante")
+    if not socio_id or not importo or not data_quota:
+        raise HTTPException(status_code=400, detail="Dati quota incompleti")
 
     session = db()
-
     quota = Quota(
         socio_id=socio_id,
         importo=importo,
         data=data_quota
     )
-
     session.add(quota)
     session.commit()
     session.refresh(quota)
 
-    return {
-        "ok": True,
-        "id": quota.id
-    }
-# ---------------------------------------------------------
-# MODELLI AGGIUNTIVI (Compensi, Movimenti, Ricevute, Pacchetti, Eventi)
-# ---------------------------------------------------------
-
-class Compenso(Base):
-    __tablename__ = "compensi"
-    id = Column(Integer, primary_key=True, index=True)
-    titolo = Column(String)
-    importo = Column(Integer)
-
-class Movimento(Base):
-    __tablename__ = "movimenti"
-    id = Column(Integer, primary_key=True, index=True)
-    descrizione = Column(String)
-    importo = Column(Integer)
-
-class Ricevuta(Base):
-    __tablename__ = "ricevute"
-    id = Column(Integer, primary_key=True, index=True)
-    numero = Column(String)
-
-class Pacchetto(Base):
-    __tablename__ = "pacchetti"
-    id = Column(Integer, primary_key=True, index=True)
-    nome = Column(String)
-
-class Evento(Base):
-    __tablename__ = "eventi"
-    id = Column(Integer, primary_key=True, index=True)
-    titolo = Column(String)
-
-Base.metadata.create_all(bind=engine)
+    return {"ok": True, "id": quota.id}
 
 
 # ---------------------------------------------------------
-# ROTTE MANCANTI (COMPENSI, MOVIMENTI, RICEVUTE, PACCHETTI, EVENTI)
+# COMPENSI, MOVIMENTI, RICEVUTE, PACCHETTI, EVENTI
 # ---------------------------------------------------------
 
 @app.get("/compensi")
@@ -421,25 +444,30 @@ def get_compensi():
     session = db()
     return session.query(Compenso).all()
 
+
 @app.get("/movimenti")
 def get_movimenti():
     session = db()
     return session.query(Movimento).all()
+
 
 @app.get("/ricevute")
 def get_ricevute():
     session = db()
     return session.query(Ricevuta).all()
 
+
 @app.get("/pacchetti")
 def get_pacchetti():
     session = db()
     return session.query(Pacchetto).all()
 
+
 @app.get("/eventi")
 def get_eventi():
     session = db()
     return session.query(Evento).all()
+
 
 # ---------------------------------------------------------
 # DASHBOARD
