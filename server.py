@@ -1,10 +1,12 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base
+from typing import Optional
 import shutil
 from datetime import datetime, timedelta
 
+app = FastAPI()
 # ---------------------------------------------------------
 # DATABASE
 # ---------------------------------------------------------
@@ -77,23 +79,15 @@ app = FastAPI()
 
 
 # ---------------------------------------------------------
-# CORS
+# CORS (Configurazione completa per Cloudflare Pages e Localhost)
 # ---------------------------------------------------------
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://wolfmind-new.pages.dev",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000"
-    ],
-    # Autorizza qualsiasi URL di anteprima *.wolfmind-new.pages.dev
-    allow_origin_regex=r"https://.*\.wolfmind-new\.pages\.dev",
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 # ---------------------------------------------------------
 # ROUTE BASE
@@ -105,7 +99,7 @@ def root():
 
 
 # ---------------------------------------------------------
-# AUTH SENZA JWT
+# AUTH SENZA JWT (CORRETTO)
 # ---------------------------------------------------------
 
 @app.post("/api/auth/login")
@@ -127,6 +121,8 @@ def login(data: dict):
 
     return {
         "id": user.id,
+        "token": str(user.id),
+        "access_token": str(user.id),
         "nome": user.nome,
         "email": user.email,
         "telefono": user.telefono,
@@ -136,25 +132,42 @@ def login(data: dict):
 
 
 @app.get("/api/auth/me")
-def auth_me(id: int):
+def auth_me(
+    id: Optional[int] = Query(None), 
+    authorization: Optional[str] = Header(None)
+):
+    user_id = id
+
+    if not user_id and authorization:
+        try:
+            token_str = authorization.replace("Bearer ", "").strip()
+            user_id = int(token_str)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Token o ID non valido")
+
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Parametro ID o Header Authorization mancante")
+
     session = db()
-    p = session.query(Profilo).filter_by(id=id).first()
+    p = session.query(Profilo).filter_by(id=user_id).first()
 
     if not p:
         raise HTTPException(status_code=404, detail="Profilo non trovato")
 
     return {
         "id": p.id,
+        "token": str(p.id),
         "nome": p.nome,
         "email": p.email,
         "telefono": p.telefono,
         "ruolo": p.ruolo,
         "avatar_url": p.avatar_url
     }
+
+
 @app.post("/api/auth/logout")
 def logout():
     return {"ok": True}
-
 
 # ---------------------------------------------------------
 # SOCI
