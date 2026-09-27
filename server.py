@@ -102,7 +102,7 @@ Base.metadata.create_all(bind=engine)
 
 
 # ---------------------------------------------------------
-# CREAZIONE / FORZATURA UTENTE ADMIN
+# CREAZIONE / AGGIORNAMENTO UTENTE ADMIN AUTOMATICO
 # ---------------------------------------------------------
 
 def init_db():
@@ -113,7 +113,7 @@ def init_db():
             admin = Profilo(
                 nome="Admin WolfMind",
                 email="admin@wolfmind.com",
-                password="admin",
+                password="WolfMind2026!",
                 telefono="3331234567",
                 ruolo="admin",
                 avatar_url=""
@@ -121,8 +121,9 @@ def init_db():
             session.add(admin)
             print("=== UTENTE ADMIN CREATO CON SUCCESSO ===")
         else:
+            user.password = "WolfMind2026!"
             user.ruolo = "admin"
-            print("=== RUOLO UTENTE AGGIORNATO AD ADMIN ===")
+            print("=== RUOLO E PASSWORD UTENTE AGGIORNATI ===")
         
         session.commit()
     except Exception as e:
@@ -178,7 +179,6 @@ def login(data: dict):
     if user.password != password:
         raise HTTPException(status_code=401, detail="Password errata")
 
-    # Assicuriamo che il ruolo restituito sia sempre admin
     return {
         "id": user.id,
         "token": str(user.id),
@@ -231,7 +231,7 @@ def logout():
 
 
 # ---------------------------------------------------------
-# SOCI & TESSERATI
+# SOCI
 # ---------------------------------------------------------
 
 @app.get("/soci")
