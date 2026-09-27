@@ -378,7 +378,68 @@ def add_quota(data: dict):
         "ok": True,
         "id": quota.id
     }
+# ---------------------------------------------------------
+# MODELLI AGGIUNTIVI (Compensi, Movimenti, Ricevute, Pacchetti, Eventi)
+# ---------------------------------------------------------
 
+class Compenso(Base):
+    __tablename__ = "compensi"
+    id = Column(Integer, primary_key=True, index=True)
+    titolo = Column(String)
+    importo = Column(Integer)
+
+class Movimento(Base):
+    __tablename__ = "movimenti"
+    id = Column(Integer, primary_key=True, index=True)
+    descrizione = Column(String)
+    importo = Column(Integer)
+
+class Ricevuta(Base):
+    __tablename__ = "ricevute"
+    id = Column(Integer, primary_key=True, index=True)
+    numero = Column(String)
+
+class Pacchetto(Base):
+    __tablename__ = "pacchetti"
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String)
+
+class Evento(Base):
+    __tablename__ = "eventi"
+    id = Column(Integer, primary_key=True, index=True)
+    titolo = Column(String)
+
+Base.metadata.create_all(bind=engine)
+
+
+# ---------------------------------------------------------
+# ROTTE MANCANTI (COMPENSI, MOVIMENTI, RICEVUTE, PACCHETTI, EVENTI)
+# ---------------------------------------------------------
+
+@app.get("/compensi")
+def get_compensi():
+    session = db()
+    return session.query(Compenso).all()
+
+@app.get("/movimenti")
+def get_movimenti():
+    session = db()
+    return session.query(Movimento).all()
+
+@app.get("/ricevute")
+def get_ricevute():
+    session = db()
+    return session.query(Ricevuta).all()
+
+@app.get("/pacchetti")
+def get_pacchetti():
+    session = db()
+    return session.query(Pacchetto).all()
+
+@app.get("/eventi")
+def get_eventi():
+    session = db()
+    return session.query(Evento).all()
 
 # ---------------------------------------------------------
 # DASHBOARD
