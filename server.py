@@ -97,9 +97,8 @@ app.add_middleware(
 def root():
     return {"ok": True, "message": "WolfMind backend attivo"}
 
-
 # ---------------------------------------------------------
-# AUTH SENZA JWT (CORRETTO)
+# AUTH SENZA JWT
 # ---------------------------------------------------------
 
 @app.post("/api/auth/login")
@@ -168,7 +167,6 @@ def auth_me(
 @app.post("/api/auth/logout")
 def logout():
     return {"ok": True}
-
 # ---------------------------------------------------------
 # SOCI
 # ---------------------------------------------------------
