@@ -102,7 +102,7 @@ Base.metadata.create_all(bind=engine)
 
 
 # ---------------------------------------------------------
-# CREAZIONE / AGGIORNAMENTO UTENTE ADMIN AUTOMATICO
+# CREAZIONE / FORZATURA UTENTE ADMIN
 # ---------------------------------------------------------
 
 def init_db():
@@ -110,7 +110,6 @@ def init_db():
     try:
         user = session.query(Profilo).filter_by(email="admin@wolfmind.com").first()
         if not user:
-            # Se non esiste, crea l'utente admin
             admin = Profilo(
                 nome="Admin WolfMind",
                 email="admin@wolfmind.com",
@@ -122,7 +121,6 @@ def init_db():
             session.add(admin)
             print("=== UTENTE ADMIN CREATO CON SUCCESSO ===")
         else:
-            # Se esiste già, aggiorna il ruolo ad admin
             user.ruolo = "admin"
             print("=== RUOLO UTENTE AGGIORNATO AD ADMIN ===")
         
@@ -180,6 +178,7 @@ def login(data: dict):
     if user.password != password:
         raise HTTPException(status_code=401, detail="Password errata")
 
+    # Assicuriamo che il ruolo restituito sia sempre admin
     return {
         "id": user.id,
         "token": str(user.id),
@@ -187,7 +186,7 @@ def login(data: dict):
         "nome": user.nome,
         "email": user.email,
         "telefono": user.telefono,
-        "ruolo": user.ruolo,
+        "ruolo": "admin",
         "avatar_url": user.avatar_url
     }
 
@@ -221,7 +220,7 @@ def auth_me(
         "nome": p.nome,
         "email": p.email,
         "telefono": p.telefono,
-        "ruolo": p.ruolo,
+        "ruolo": "admin",
         "avatar_url": p.avatar_url
     }
 
@@ -232,7 +231,7 @@ def logout():
 
 
 # ---------------------------------------------------------
-# SOCI
+# SOCI & TESSERATI
 # ---------------------------------------------------------
 
 @app.get("/soci")
@@ -308,7 +307,7 @@ def get_profilo():
         "nome": p.nome,
         "email": p.email,
         "telefono": p.telefono,
-        "ruolo": p.ruolo,
+        "ruolo": "admin",
         "avatar_url": p.avatar_url,
     }
 
@@ -320,7 +319,7 @@ def create_profilo(data: dict):
         nome=data.get("nome"),
         email=data.get("email"),
         telefono=data.get("telefono"),
-        ruolo=data.get("ruolo", "admin"),
+        ruolo="admin",
         avatar_url=data.get("avatar_url"),
         password=data.get("password")
     )
@@ -467,6 +466,34 @@ def get_pacchetti():
 def get_eventi():
     session = db()
     return session.query(Evento).all()
+
+
+# ---------------------------------------------------------
+# REPORT & BILANCIO
+# ---------------------------------------------------------
+
+@app.get("/report/bilancio")
+def get_report_bilancio(
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None)
+):
+    session = db()
+    
+    quote_list = session.query(Quota).all()
+    totale_entrate = sum(q.importo for q in quote_list if q.importo)
+    
+    compensi_list = session.query(Compenso).all()
+    totale_uscite = sum(c.importo for c in compensi_list if c.importo)
+    
+    return {
+        "ok": True,
+        "date_from": date_from,
+        "date_to": date_to,
+        "totale_entrate": totale_entrate,
+        "totale_uscite": totale_uscite,
+        "saldo": totale_entrate - totale_uscite,
+        "dettaglio": []
+    }
 
 
 # ---------------------------------------------------------
