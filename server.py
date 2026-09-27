@@ -6,7 +6,6 @@ from typing import Optional
 import shutil
 from datetime import datetime, timedelta
 
-app = FastAPI()
 # ---------------------------------------------------------
 # DATABASE
 # ---------------------------------------------------------
@@ -50,36 +49,32 @@ class Profilo(Base):
 
 
 class Abbonamento(Base):
-__tablename__ = "abbonamenti"
-id = Column(Integer, primary_key=True, index=True)
-socio_id = Column(Integer)
-tipo = Column(String)
-stato = Column(String)
-data_inizio = Column(DateTime)
-data_fine = Column(DateTime)
- 
+    __tablename__ = "abbonamenti"
+    id = Column(Integer, primary_key=True, index=True)
+    socio_id = Column(Integer)
+    tipo = Column(String)
+    stato = Column(String)
+    data_inizio = Column(DateTime)
+    data_fine = Column(DateTime)
+
+
 class Quota(Base):
-__tablename__ = "quote"
- 
-id = Column(Integer, primary_key=True, index=True)
-socio_id = Column(Integer, nullable=False)
-importo = Column(Integer, nullable=False)
-data = Column(String, nullable=False)
- 
- 
+    __tablename__ = "quote"
+    id = Column(Integer, primary_key=True, index=True)
+    socio_id = Column(Integer, nullable=False)
+    importo = Column(Integer, nullable=False)
+    data = Column(String, nullable=False)
+
+
 Base.metadata.create_all(bind=engine)
- 
- 
+
+
 # ---------------------------------------------------------
-# APP
+# APP & CORS
 # ---------------------------------------------------------
- 
+
 app = FastAPI()
 
-
-# ---------------------------------------------------------
-# CORS (Configurazione completa per Cloudflare Pages e Localhost)
-# ---------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -88,6 +83,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # ---------------------------------------------------------
 # ROUTE BASE
 # ---------------------------------------------------------
@@ -95,6 +91,7 @@ app.add_middleware(
 @app.get("/")
 def root():
     return {"ok": True, "message": "WolfMind backend attivo"}
+
 
 # ---------------------------------------------------------
 # AUTH SENZA JWT
@@ -166,6 +163,8 @@ def auth_me(
 @app.post("/api/auth/logout")
 def logout():
     return {"ok": True}
+
+
 # ---------------------------------------------------------
 # SOCI
 # ---------------------------------------------------------
@@ -247,6 +246,7 @@ def get_profilo():
         "avatar_url": p.avatar_url,
     }
 
+
 @app.post("/profilo")
 def create_profilo(data: dict):
     session = db()
@@ -262,6 +262,7 @@ def create_profilo(data: dict):
     session.commit()
     session.refresh(p)
     return {"ok": True, "id": p.id}
+
 
 @app.patch("/profilo/avatar")
 def update_avatar(file: UploadFile = File(...)):
@@ -325,76 +326,60 @@ def add_abbonamento(data: dict):
 
     return {"ok": True, "id": a.id}
 
-class Quota(Base):
-__tablename__ = "quote"
- 
-id = Column(Integer, primary_key=True, index=True)
-socio_id = Column(Integer, nullable=False)
-importo = Column(Integer, nullable=False)
-data = Column(String, nullable=False)
+
 # ---------------------------------------------------------
 # QUOTE ASSOCIATIVE
 # ---------------------------------------------------------
- 
+
 @app.get("/quote")
 def get_quote():
-session = db()
- 
-quote = session.query(Quota).all()
- 
-return [
-{
-"id": q.id,
-"socio_id": q.socio_id,
-"importo": q.importo,
-"data": q.data,
-}
-for q in quote
-]
- 
- 
+    session = db()
+    quote = session.query(Quota).all()
+
+    return [
+        {
+            "id": q.id,
+            "socio_id": q.socio_id,
+            "importo": q.importo,
+            "data": q.data,
+        }
+        for q in quote
+    ]
+
+
 @app.post("/quote")
 def add_quota(data: dict):
-socio_id = data.get("socio_id")
-importo = data.get("importo")
-data_quota = data.get("data")
- 
-if not socio_id:
-raise HTTPException(
-status_code=400,
-detail="socio_id mancante"
-)
- 
-if not importo:
-raise HTTPException(
-status_code=400,
-detail="importo mancante"
-)
- 
-if not data_quota:
-raise HTTPException(
-status_code=400,
-detail="data mancante"
-)
- 
-session = db()
- 
-quota = Quota(
-socio_id=socio_id,
-importo=importo,
-data=data_quota
-)
- 
-session.add(quota)
-session.commit()
-session.refresh(quota)
- 
-return {
-"ok": True,
-"id": quota.id
-}
- 
- 
+    socio_id = data.get("socio_id")
+    importo = data.get("importo")
+    data_quota = data.get("data")
+
+    if not socio_id:
+        raise HTTPException(status_code=400, detail="socio_id mancante")
+
+    if not importo:
+        raise HTTPException(status_code=400, detail="importo mancante")
+
+    if not data_quota:
+        raise HTTPException(status_code=400, detail="data mancante")
+
+    session = db()
+
+    quota = Quota(
+        socio_id=socio_id,
+        importo=importo,
+        data=data_quota
+    )
+
+    session.add(quota)
+    session.commit()
+    session.refresh(quota)
+
+    return {
+        "ok": True,
+        "id": quota.id
+    }
+
+
 # ---------------------------------------------------------
 # DASHBOARD
 # ---------------------------------------------------------
@@ -409,8 +394,3 @@ def dashboard():
         "soci": soci_count,
         "abbonamenti": abbs_count,
     }
-
-
-# ---------------------------------------------------------
-# FINE FILE
-# ---------------------------------------------------------
