@@ -193,37 +193,46 @@ def login(data: dict):
 
 @app.get("/api/auth/me")
 def auth_me(
-    id: Optional[int] = Query(None), 
+    id: Optional[str] = Query(None), 
     authorization: Optional[str] = Header(None)
 ):
-    user_id = id
+    user_id = None
 
+    # Tenta di estrarre l'ID dal parametro Query
+    if id and str(id).isdigit():
+        user_id = int(id)
+
+    # Tenta di estrarre l'ID dall'Header Authorization
     if not user_id and authorization:
         try:
             token_str = authorization.replace("Bearer ", "").strip()
-            user_id = int(token_str)
-        except ValueError:
-            raise HTTPException(status_code=422, detail="Token o ID non valido")
+            if token_str.isdigit():
+                user_id = int(token_str)
+        except Exception:
+            pass
 
+    # Se non c'è un ID valido, restituisce 401 pulito anziché crashare con 500
     if not user_id:
-        raise HTTPException(status_code=400, detail="Parametro ID o Header Authorization mancante")
+        raise HTTPException(status_code=401, detail="Sessione non valida o ID mancante")
 
     session = db()
-    p = session.query(Profilo).filter_by(id=user_id).first()
+    try:
+        p = session.query(Profilo).filter_by(id=user_id).first()
 
-    if not p:
-        raise HTTPException(status_code=404, detail="Profilo non trovato")
+        if not p:
+            raise HTTPException(status_code=404, detail="Profilo non trovato")
 
-    return {
-        "id": p.id,
-        "token": str(p.id),
-        "nome": p.nome,
-        "email": p.email,
-        "telefono": p.telefono,
-        "ruolo": "admin",
-        "avatar_url": p.avatar_url
-    }
-
+        return {
+            "id": p.id,
+            "token": str(p.id),
+            "nome": p.nome,
+            "email": p.email,
+            "telefono": p.telefono,
+            "ruolo": "admin",
+            "avatar_url": p.avatar_url
+        }
+    finally:
+        session.close()
 
 @app.post("/api/auth/logout")
 def logout():
