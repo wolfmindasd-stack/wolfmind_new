@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useAuth } from "../lib/auth";
-import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -10,7 +9,6 @@ import InstallPWAButton from "../components/InstallPWAButton";
 
 export default function Login() {
   const { login } = useAuth();
-  const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
@@ -22,16 +20,16 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email, password);
-      nav("/");
+      // Sincronizza il localStorage e carica la Dashboard con permessi Admin
+      window.location.href = "/";
     } catch (e) {
       setErr(formatApiErrorDetail(e.response?.data?.detail) || e.message);
-    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center px-6">
+    <div className="min-h-screen bg-[#050505] flex items-center justify-center px-6 text-white">
       <div className="w-full max-w-md">
         <div className="mb-8 text-left">
           <div className="wm-label mb-2">A.S.D. Gestionale</div>
@@ -48,13 +46,13 @@ export default function Login() {
             <Label htmlFor="email" className="wm-label">Email</Label>
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
               required autoComplete="email" data-testid="login-email-input"
-              className="bg-black/40 border-white/10 focus:border-[#007AFF] focus:ring-[#007AFF]/30 h-11" />
+              className="bg-black/40 border-white/10 focus:border-[#007AFF] focus:ring-[#007AFF]/30 h-11 text-white" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password" className="wm-label">Password</Label>
             <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
               required autoComplete="current-password" data-testid="login-password-input"
-              className="bg-black/40 border-white/10 focus:border-[#007AFF] focus:ring-[#007AFF]/30 h-11" />
+              className="bg-black/40 border-white/10 focus:border-[#007AFF] focus:ring-[#007AFF]/30 h-11 text-white" />
           </div>
 
           {err && (
