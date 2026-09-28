@@ -1,71 +1,85 @@
 import React, { useState } from "react";
 import { useAuth } from "../lib/auth";
+import { useNavigate } from "react-router-dom";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { formatApiErrorDetail } from "../lib/api";
+import { Loader2 } from "lucide-react";
+import InstallPWAButton from "../components/InstallPWAButton";
 
 export default function Login() {
   const { login } = useAuth();
-  const [email, setEmail] = useState("admin@wolfmind.com");
-  const [password, setPassword] = useState("WolfMind2026!");
+  const nav = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    setErr("");
     setLoading(true);
-    setError("");
-
     try {
       await login(email, password);
-      // Ricarica forzata sulla home per caricare lo stato Admin
-      window.location.href = "/";
-    } catch (err) {
-      console.error("Errore Login:", err);
-      setError("Credenziali non valide o errore di connessione");
+      nav("/");
+    } catch (e) {
+      setErr(formatApiErrorDetail(e.response?.data?.detail) || e.message);
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-900 text-gray-900">
-      <div className="bg-white p-8 rounded-lg w-80 space-y-4 shadow-xl">
-        <h1 className="text-2xl font-bold text-center">Login WolfMind</h1>
+    <div className="min-h-screen bg-[#050505] flex items-center justify-center px-6">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-left">
+          <div className="wm-label mb-2">A.S.D. Gestionale</div>
+          <h1 className="font-display text-4xl sm:text-5xl font-black tracking-tighter leading-none">
+            WOLF'S<br /><span className="text-[#007AFF]">MIND</span>
+          </h1>
+          <p className="mt-4 text-white/60 text-sm">
+            Accedi con le tue credenziali per gestire tesserati, ricevute e movimenti.
+          </p>
+        </div>
 
-        {error && (
-          <div className="text-red-600 text-center text-sm font-medium bg-red-50 p-2 rounded">
-            {error}
+        <form onSubmit={submit} className="wm-card p-6 space-y-4" data-testid="login-form">
+          <div className="space-y-2">
+            <Label htmlFor="email" className="wm-label">Email</Label>
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              required autoComplete="email" data-testid="login-email-input"
+              className="bg-black/40 border-white/10 focus:border-[#007AFF] focus:ring-[#007AFF]/30 h-11" />
           </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Email</label>
-            <input
-              type="email"
-              required
-              className="border border-gray-300 p-2 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Password</label>
-            <input
-              type="password"
-              required
-              className="border border-gray-300 p-2 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+          <div className="space-y-2">
+            <Label htmlFor="password" className="wm-label">Password</Label>
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+              required autoComplete="current-password" data-testid="login-password-input"
+              className="bg-black/40 border-white/10 focus:border-[#007AFF] focus:ring-[#007AFF]/30 h-11" />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white p-2.5 rounded transition font-medium disabled:opacity-50 mt-2"
-          >
-            {loading ? "Accesso in corso..." : "Accedi"}
-          </button>
+          {err && (
+            <div data-testid="login-error" className="text-sm text-[#FF3B30] py-2 px-3
+                 bg-[#FF3B30]/10 border border-[#FF3B30]/30 rounded">
+              {err}
+            </div>
+          )}
+
+          <Button type="submit" disabled={loading} data-testid="login-submit-button"
+            className="w-full h-11 bg-[#007AFF] hover:bg-[#005BB5] text-white font-semibold">
+            {loading ? <Loader2 className="animate-spin" size={18} /> : "Accedi"}
+          </Button>
         </form>
+
+        <div className="mt-6 text-center text-xs text-white/40">
+          Contatta l'amministratore se hai dimenticato le credenziali.
+        </div>
+
+        <div className="mt-6">
+          <InstallPWAButton />
+          <div className="text-center text-[11px] text-white/40 mt-1">
+            Installa l'app sul tuo smartphone per un accesso rapido a schermo intero.
+          </div>
+        </div>
       </div>
     </div>
   );
