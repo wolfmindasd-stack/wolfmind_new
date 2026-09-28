@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Header, Query
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -140,7 +140,7 @@ def logout():
 
 
 # ---------------------------------------------------------
-# ROTTE GESTIONALI
+# DASHBOARD
 # ---------------------------------------------------------
 
 @app.get("/dashboard")
@@ -159,6 +159,10 @@ def get_dashboard():
         "scadenze_imminenti": []
     }
 
+
+# ---------------------------------------------------------
+# TESSERATI
+# ---------------------------------------------------------
 
 @app.get("/tesserati")
 def get_tesserati():
@@ -233,7 +237,7 @@ def get_report_bilancio(date_from: Optional[str] = Query(None), date_to: Optiona
     }
 
 
-# Fallback per liste vuote per evitare errori di rendering nelle altre pagine
+# Fallback per evitare errori 404 sulle pagine secondarie
 @app.get("/pacchetti")
 @app.get("/abbonamenti")
 @app.get("/movimenti")
