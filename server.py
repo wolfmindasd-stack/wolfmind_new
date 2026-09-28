@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Query
+from fastapi import FastAPI, HTTPException, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -25,34 +25,34 @@ def db():
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String)
+    name = Column(String, default="Admin WolfMind")
     email = Column(String, unique=True, index=True)
     password = Column(String)
-    role = Column(String)
+    role = Column(String, default="admin")
     active = Column(String, default="true")
 
 
 class Tesserato(Base):
     __tablename__ = "tesserati"
     id = Column(Integer, primary_key=True, index=True)
-    numero_tessera = Column(String)
-    cognome = Column(String)
-    nome = Column(String)
-    codice_fiscale = Column(String)
-    indirizzo = Column(String)
-    civico = Column(String)
-    cap = Column(String)
-    citta = Column(String)
-    provincia = Column(String)
-    email = Column(String)
-    telefono = Column(String)
-    data_nascita = Column(String)
-    scadenza_tesseramento = Column(String)
-    scadenza_visita_medica = Column(String)
-    note = Column(String)
-    tipologia = Column(String)
-    assigned_tecnico_id = Column(String)
-    portale_token = Column(String)
+    numero_tessera = Column(String, default="")
+    cognome = Column(String, default="")
+    nome = Column(String, default="")
+    codice_fiscale = Column(String, default="")
+    indirizzo = Column(String, default="")
+    civico = Column(String, default="")
+    cap = Column(String, default="")
+    citta = Column(String, default="")
+    provincia = Column(String, default="")
+    email = Column(String, default="")
+    telefono = Column(String, default="")
+    data_nascita = Column(String, default="")
+    scadenza_tesseramento = Column(String, default="")
+    scadenza_visita_medica = Column(String, default="")
+    note = Column(String, default="")
+    tipologia = Column(String, default="")
+    assigned_tecnico_id = Column(String, default="")
+    portale_token = Column(String, default="")
 
 
 Base.metadata.create_all(bind=engine)
@@ -73,7 +73,7 @@ def init_db():
             session.add(admin)
             session.commit()
     except Exception as e:
-        print("Errore init admin:", e)
+        print("Errore init db:", e)
     finally:
         session.close()
 
@@ -97,11 +97,11 @@ app.add_middleware(
 
 @app.get("/")
 def root():
-    return {"ok": True, "message": "WolfMind Backend Ready"}
+    return {"ok": True, "message": "WolfMind Backend Emergent Active"}
 
 
 # ---------------------------------------------------------
-# AUTENTICAZIONE
+# AUTENTICAZIONE EXACT EMERGENT FORMAT
 # ---------------------------------------------------------
 
 @app.post("/api/auth/login")
@@ -109,7 +109,7 @@ def login(data: dict):
     email = data.get("email") or data.get("username") or "admin@wolfmind.com"
 
     admin_user = {
-        "id": 1,
+        "id": "1",
         "name": "Admin WolfMind",
         "email": email,
         "role": "admin",
@@ -117,8 +117,8 @@ def login(data: dict):
     }
 
     return {
-        "access_token": "token_admin_12345",
-        "token": "token_admin_12345",
+        "access_token": "token_admin_emergent",
+        "token": "token_admin_emergent",
         "user": admin_user
     }
 
@@ -126,7 +126,7 @@ def login(data: dict):
 @app.get("/api/auth/me")
 def auth_me():
     return {
-        "id": 1,
+        "id": "1",
         "name": "Admin WolfMind",
         "email": "admin@wolfmind.com",
         "role": "admin",
@@ -203,6 +203,10 @@ def delete_tesserato(t_id: int):
     return {"ok": True}
 
 
+# ---------------------------------------------------------
+# UTENTI & TIPOLOGIE
+# ---------------------------------------------------------
+
 @app.get("/users")
 def get_users():
     return [{
@@ -218,11 +222,15 @@ def get_users():
 @app.get("/tipi")
 def get_tipologie():
     return [
-        {"id": 1, "nome": "Base", "attivo": 1},
-        {"id": 2, "nome": "Premium", "attivo": 1},
-        {"id": 3, "nome": "Agonista", "attivo": 1}
+        {"id": 1, "nome": "Base", "attivo": True},
+        {"id": 2, "nome": "Premium", "attivo": True},
+        {"id": 3, "nome": "Agonista", "attivo": True}
     ]
 
+
+# ---------------------------------------------------------
+# ROTTE DI SUPPORTO PER PAGINE SECONDARIE (PREVIENE CRASH 404 E REACT RENDER)
+# ---------------------------------------------------------
 
 @app.get("/report/bilancio")
 def get_report_bilancio(date_from: Optional[str] = Query(None), date_to: Optional[str] = Query(None)):
@@ -237,7 +245,6 @@ def get_report_bilancio(date_from: Optional[str] = Query(None), date_to: Optiona
     }
 
 
-# Fallback per evitare errori 404 sulle pagine secondarie
 @app.get("/pacchetti")
 @app.get("/abbonamenti")
 @app.get("/movimenti")
