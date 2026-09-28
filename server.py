@@ -26,26 +26,47 @@ def db():
 
 
 # ---------------------------------------------------------
-# MODELLI
+# MODELLI DB
 # ---------------------------------------------------------
 
-class Soci(Base):
-    __tablename__ = "soci"
+class User(Base):
+    __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    nome = Column(String)
+    name = Column(String)
+    email = Column(String, unique=True, index=True)
+    password = Column(String)
+    role = Column(String)  # 'admin' o 'tecnico'
+    active = Column(String, default="true")
+
+
+class Tesserato(Base):
+    __tablename__ = "tesserati"
+    id = Column(Integer, primary_key=True, index=True)
+    numero_tessera = Column(String)
     cognome = Column(String)
-    email = Column(String)
-
-
-class Profilo(Base):
-    __tablename__ = "profilo"
-    id = Column(Integer, primary_key=True, index=True)
     nome = Column(String)
+    codice_fiscale = Column(String)
+    indirizzo = Column(String)
+    civico = Column(String)
+    cap = Column(String)
+    citta = Column(String)
+    provincia = Column(String)
     email = Column(String)
     telefono = Column(String)
-    ruolo = Column(String)
-    avatar_url = Column(String)
-    password = Column(String)
+    data_nascita = Column(String)
+    scadenza_tesseramento = Column(String)
+    scadenza_visita_medica = Column(String)
+    note = Column(String)
+    tipologia = Column(String)
+    assigned_tecnico_id = Column(String)
+    portale_token = Column(String)
+
+
+class Tipologia(Base):
+    __tablename__ = "tipologie"
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String)
+    attivo = Column(Integer, default=1)
 
 
 class Abbonamento(Base):
@@ -54,80 +75,52 @@ class Abbonamento(Base):
     socio_id = Column(Integer)
     tipo = Column(String)
     stato = Column(String)
-    data_inizio = Column(DateTime)
-    data_fine = Column(DateTime)
-
-
-class Quota(Base):
-    __tablename__ = "quote"
-    id = Column(Integer, primary_key=True, index=True)
-    socio_id = Column(Integer, nullable=False)
-    importo = Column(Integer, nullable=False)
-    data = Column(String, nullable=False)
-
-
-class Compenso(Base):
-    __tablename__ = "compensi"
-    id = Column(Integer, primary_key=True, index=True)
-    titolo = Column(String)
-    importo = Column(Integer)
-
-
-class Movimento(Base):
-    __tablename__ = "movimenti"
-    id = Column(Integer, primary_key=True, index=True)
-    descrizione = Column(String)
-    importo = Column(Integer)
 
 
 class Ricevuta(Base):
     __tablename__ = "ricevute"
     id = Column(Integer, primary_key=True, index=True)
     numero = Column(String)
+    importo = Column(Integer, default=0)
+    data = Column(String)
 
 
-class Pacchetto(Base):
-    __tablename__ = "pacchetti"
+class Movimento(Base):
+    __tablename__ = "movimenti"
     id = Column(Integer, primary_key=True, index=True)
-    nome = Column(String)
-
-
-class Evento(Base):
-    __tablename__ = "eventi"
-    id = Column(Integer, primary_key=True, index=True)
-    titolo = Column(String)
+    tipo = Column(String)  # 'entrata' o 'uscita'
+    importo = Column(Integer, default=0)
+    data = Column(String)
 
 
 Base.metadata.create_all(bind=engine)
 
 
 # ---------------------------------------------------------
-# CREAZIONE / AGGIORNAMENTO UTENTE ADMIN AUTOMATICO
+# INIZIALIZZAZIONE UTENTE ADMIN
 # ---------------------------------------------------------
 
 def init_db():
     session = db()
     try:
-        user = session.query(Profilo).filter_by(email="admin@wolfmind.com").first()
+        user = session.query(User).filter_by(email="admin@wolfmind.com").first()
         if not user:
-            admin = Profilo(
-                nome="Admin WolfMind",
+            admin = User(
+                name="Admin WolfMind",
                 email="admin@wolfmind.com",
                 password="WolfMind2026!",
-                telefono="3331234567",
-                ruolo="admin",
-                avatar_url=""
+                role="admin",
+                active="true"
             )
             session.add(admin)
-            print("=== UTENTE ADMIN CREATO CON SUCCESSO ===")
+            session.commit()
+            print("=== UTENTE ADMIN INIZIALIZZATO ===")
         else:
+            user.role = "admin"
             user.password = "WolfMind2026!"
-            user.ruolo = "admin"
-            print("=== RUOLO E PASSWORD UTENTE AGGIORNATI ===")
-        
-        session.commit()
+            session.commit()
     except Exception as e:
-        print("Errore aggiornamento admin:", e)
+        print("Errore init admin:", e)
     finally:
         session.close()
 
@@ -135,7 +128,7 @@ init_db()
 
 
 # ---------------------------------------------------------
-# APP & CORS
+# FASTAPI & CORS
 # ---------------------------------------------------------
 
 app = FastAPI()
@@ -143,339 +136,79 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# ---------------------------------------------------------
-# ROUTE BASE
-# ---------------------------------------------------------
-
 @app.get("/")
 def root():
-    return {"ok": True, "message": "WolfMind backend attivo"}
+    return {"ok": True, "message": "WolfMind Backend Emergent Ready"}
 
 
 # ---------------------------------------------------------
-# AUTH SENZA JWT
+# AUTENTICAZIONE (SCHEMA EMERGENT)
 # ---------------------------------------------------------
 
-# ---------------------------------------------------------
-# AUTH COMPATIBILE VECCHIO PROJECT
-# ---------------------------------------------------------
-
-@app.post("/auth/login")
 @app.post("/api/auth/login")
 def login(data: dict):
     email = data.get("email") or data.get("username")
     password = data.get("password")
 
-    admin_data = {
-        "id": 1,
-        "nome": "Admin WolfMind",
-        "email": email or "admin@wolfmind.com",
-        "telefono": "3331234567",
-        "role": "admin",
-        "ruolo": "admin",
-        "avatar_url": ""
-    }
+    if not email:
+        raise HTTPException(status_code=400, detail="Email mancante")
 
-    return {
-        "user": admin_data,
-        "access_token": "1",
-        "token": "1"
-    }
+    session = db()
+    try:
+        user = session.query(User).filter_by(email=email).first()
+
+        # Se l'utente non esiste, crea automaticamente l'admin
+        if not user:
+            user = User(
+                name="Admin WolfMind",
+                email="admin@wolfmind.com",
+                password="WolfMind2026!",
+                role="admin",
+                active="true"
+            )
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+
+        user_data = {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "role": "admin",  # Forza sempre ruolo admin
+            "active": True
+        }
+
+        # Ritorna l'oggetto esattamente come richiesto da auth.jsx di Emergent
+        return {
+            "access_token": f"token_{user.id}",
+            "token": f"token_{user.id}",
+            "user": user_data
+        }
+    finally:
+        session.close()
 
 
-@app.get("/auth/me")
 @app.get("/api/auth/me")
-def auth_me(
-    id: Optional[str] = Query(None), 
-    authorization: Optional[str] = Header(None)
-):
+def auth_me():
+    # Ritorna il profilo admin di default per convalidare la sessione
     return {
         "id": 1,
-        "nome": "Admin WolfMind",
+        "name": "Admin WolfMind",
         "email": "admin@wolfmind.com",
-        "telefono": "3331234567",
         "role": "admin",
-        "ruolo": "admin",
-        "avatar_url": ""
+        "active": True
     }
 
 
-@app.post("/auth/logout")
 @app.post("/api/auth/logout")
 def logout():
     return {"ok": True}
-
-
-# ---------------------------------------------------------
-# SOCI & TESSERATI
-# ---------------------------------------------------------
-
-@app.get("/soci")
-def get_soci():
-    session = db()
-    soci = session.query(Soci).all()
-    return [
-        {
-            "id": s.id,
-            "nome": s.nome,
-            "cognome": s.cognome,
-            "email": s.email,
-        }
-        for s in soci
-    ]
-
-
-@app.post("/soci")
-def add_socio(data: dict):
-    nome = data.get("nome")
-    cognome = data.get("cognome")
-    email = data.get("email")
-
-    if not nome or not cognome or not email:
-        raise HTTPException(status_code=400, detail="Dati socio incompleti")
-
-    session = db()
-    s = Soci(nome=nome, cognome=cognome, email=email)
-    session.add(s)
-    session.commit()
-    session.refresh(s)
-
-    return {"ok": True, "id": s.id}
-
-
-@app.get("/tesserati")
-def tesserati():
-    session = db()
-    soci = session.query(Soci).all()
-    return [
-        {
-            "id": s.id,
-            "nome": s.nome,
-            "cognome": s.cognome,
-            "email": s.email,
-        }
-        for s in soci
-    ]
-
-
-@app.get("/tipologie-tesserato")
-def tipologie_tesserato():
-    return [
-        {"id": 1, "nome": "Base"},
-        {"id": 2, "nome": "Premium"},
-        {"id": 3, "nome": "Agonista"},
-    ]
-
-
-# ---------------------------------------------------------
-# PROFILO
-# ---------------------------------------------------------
-
-@app.get("/profilo")
-def get_profilo():
-    session = db()
-    p = session.query(Profilo).first()
-    if not p:
-        raise HTTPException(status_code=404, detail="Profilo non trovato")
-
-    return {
-        "id": p.id,
-        "nome": p.nome,
-        "email": p.email,
-        "telefono": p.telefono,
-        "ruolo": "admin",
-        "avatar_url": p.avatar_url,
-    }
-
-
-@app.post("/profilo")
-def create_profilo(data: dict):
-    session = db()
-    p = Profilo(
-        nome=data.get("nome"),
-        email=data.get("email"),
-        telefono=data.get("telefono"),
-        ruolo="admin",
-        avatar_url=data.get("avatar_url"),
-        password=data.get("password")
-    )
-    session.add(p)
-    session.commit()
-    session.refresh(p)
-    return {"ok": True, "id": p.id}
-
-
-@app.patch("/profilo/avatar")
-def update_avatar(file: UploadFile = File(...)):
-    path = f"uploads/{file.filename}"
-    with open(path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    session = db()
-    p = session.query(Profilo).first()
-    if not p:
-        raise HTTPException(status_code=404, detail="Profilo non trovato")
-
-    p.avatar_url = path
-    session.commit()
-
-    return {"ok": True, "avatar_url": path}
-
-
-# ---------------------------------------------------------
-# ABBONAMENTI
-# ---------------------------------------------------------
-
-@app.get("/abbonamenti")
-def get_abbonamenti():
-    session = db()
-    abbs = session.query(Abbonamento).all()
-    return [
-        {
-            "id": a.id,
-            "socio_id": a.socio_id,
-            "tipo": a.tipo,
-            "stato": a.stato,
-            "data_inizio": a.data_inizio,
-            "data_fine": a.data_fine,
-        }
-        for a in abbs
-    ]
-
-
-@app.post("/abbonamenti")
-def add_abbonamento(data: dict):
-    socio_id = data.get("socio_id")
-    tipo = data.get("tipo", "Mensile")
-    stato = data.get("stato", "attivo")
-
-    if not socio_id:
-        raise HTTPException(status_code=400, detail="socio_id mancante")
-
-    session = db()
-    now = datetime.utcnow()
-    a = Abbonamento(
-        socio_id=socio_id,
-        tipo=tipo,
-        stato=stato,
-        data_inizio=now,
-        data_fine=now + timedelta(days=30),
-    )
-    session.add(a)
-    session.commit()
-    session.refresh(a)
-
-    return {"ok": True, "id": a.id}
-
-
-# ---------------------------------------------------------
-# QUOTE ASSOCIATIVE
-# ---------------------------------------------------------
-
-@app.get("/quote")
-def get_quote():
-    session = db()
-    quote = session.query(Quota).all()
-
-    return [
-        {
-            "id": q.id,
-            "socio_id": q.socio_id,
-            "importo": q.importo,
-            "data": q.data,
-        }
-        for q in quote
-    ]
-
-
-@app.post("/quote")
-def add_quota(data: dict):
-    socio_id = data.get("socio_id")
-    importo = data.get("importo")
-    data_quota = data.get("data")
-
-    if not socio_id or not importo or not data_quota:
-        raise HTTPException(status_code=400, detail="Dati quota incompleti")
-
-    session = db()
-    quota = Quota(
-        socio_id=socio_id,
-        importo=importo,
-        data=data_quota
-    )
-    session.add(quota)
-    session.commit()
-    session.refresh(quota)
-
-    return {"ok": True, "id": quota.id}
-
-
-# ---------------------------------------------------------
-# COMPENSI, MOVIMENTI, RICEVUTE, PACCHETTI, EVENTI
-# ---------------------------------------------------------
-
-@app.get("/compensi")
-def get_compensi():
-    session = db()
-    return session.query(Compenso).all()
-
-
-@app.get("/movimenti")
-def get_movimenti():
-    session = db()
-    return session.query(Movimento).all()
-
-
-@app.get("/ricevute")
-def get_ricevute():
-    session = db()
-    return session.query(Ricevuta).all()
-
-
-@app.get("/pacchetti")
-def get_pacchetti():
-    session = db()
-    return session.query(Pacchetto).all()
-
-
-@app.get("/eventi")
-def get_eventi():
-    session = db()
-    return session.query(Evento).all()
-
-
-# ---------------------------------------------------------
-# REPORT & BILANCIO
-# ---------------------------------------------------------
-
-@app.get("/report/bilancio")
-def get_report_bilancio(
-    date_from: Optional[str] = Query(None),
-    date_to: Optional[str] = Query(None)
-):
-    session = db()
-    
-    quote_list = session.query(Quota).all()
-    totale_entrate = sum(q.importo for q in quote_list if q.importo)
-    
-    compensi_list = session.query(Compenso).all()
-    totale_uscite = sum(c.importo for c in compensi_list if c.importo)
-    
-    return {
-        "ok": True,
-        "date_from": date_from,
-        "date_to": date_to,
-        "totale_entrate": totale_entrate,
-        "totale_uscite": totale_uscite,
-        "saldo": totale_entrate - totale_uscite,
-        "dettaglio": []
-    }
 
 
 # ---------------------------------------------------------
@@ -483,12 +216,93 @@ def get_report_bilancio(
 # ---------------------------------------------------------
 
 @app.get("/dashboard")
-def dashboard():
+def get_dashboard():
     session = db()
-    soci_count = session.query(Soci).count()
-    abbs_count = session.query(Abbonamento).count()
+    tesserati_count = session.query(Tesserato).count()
+    abbon_count = session.query(Abbonamento).count()
+    ricevute_count = session.query(Ricevuta).count()
+
     return {
-        "ok": True,
-        "soci": soci_count,
-        "abbonamenti": abbs_count,
+        "tesserati_count": tesserati_count,
+        "abbon_count": abbon_count,
+        "ricevute_mese_count": ricevute_count,
+        "incassato_mese": 0,
+        "entrate_anno": 0,
+        "uscite_anno": 0,
+        "saldo_anno": 0,
+        "compenso_maturato": 0,
+        "scadenze_imminenti": []
     }
+
+
+# ---------------------------------------------------------
+# TESSERATI
+# ---------------------------------------------------------
+
+@app.get("/tesserati")
+def get_tesserati():
+    session = db()
+    tesserati = session.query(Tesserato).all()
+    return tesserati
+
+
+@app.post("/tesserati")
+def create_tesserato(data: dict):
+    session = db()
+    t = Tesserato(**{k: v for k, v in data.items() if hasattr(Tesserato, k)})
+    session.add(t)
+    session.commit()
+    session.refresh(t)
+    return t
+
+
+@app.patch("/tesserati/{t_id}")
+def update_tesserato(t_id: int, data: dict):
+    session = db()
+    t = session.query(Tesserato).filter_by(id=t_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tesserato non trovato")
+    for k, v in data.items():
+        if hasattr(t, k):
+            setattr(t, k, v)
+    session.commit()
+    return t
+
+
+@app.delete("/tesserati/{t_id}")
+def delete_tesserato(t_id: int):
+    session = db()
+    t = session.query(Tesserato).filter_by(id=t_id).first()
+    if t:
+        session.delete(t)
+        session.commit()
+    return {"ok": True}
+
+
+# ---------------------------------------------------------
+# UTENTI / TIPOLOGIE
+# ---------------------------------------------------------
+
+@app.get("/users")
+def get_users():
+    session = db()
+    users = session.query(User).all()
+    return [
+        {
+            "id": str(u.id),
+            "name": u.name,
+            "email": u.email,
+            "role": u.role,
+            "active": u.active == "true"
+        }
+        for u in users
+    ]
+
+
+@app.get("/tipologie-tesserato")
+def get_tipologie():
+    return [
+        {"id": 1, "nome": "Base", "attivo": 1},
+        {"id": 2, "nome": "Premium", "attivo": 1},
+        {"id": 3, "nome": "Agonista", "attivo": 1}
+    ]
