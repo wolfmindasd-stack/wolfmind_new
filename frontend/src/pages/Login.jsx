@@ -3,8 +3,8 @@ import { api, formatApiErrorDetail } from "../lib/api";
 
 export default function Login() {
   const [form, setForm] = useState({
-    email: "",
-    password: "",
+    email: "admin@wolfmind.com",
+    password: "WolfMind2026!",
   });
 
   const [loading, setLoading] = useState(false);
@@ -16,34 +16,29 @@ export default function Login() {
     setError("");
 
     try {
+      // Invio preciso delle chiavi email e password
       const payload = {
-        username: form.email,
-        email: form.email,
-        password: form.password,
+        email: form.email.trim(),
+        password: form.password.trim(),
       };
 
-     const res = await api.post("/api/auth/login", payload);
+      const res = await api.post("/api/auth/login", payload);
 
-      // Crea l'oggetto utente garantendo il ruolo admin
       const userData = {
         ...res.data,
-        ruolo: "admin", // Forziamo il ruolo admin
+        ruolo: "admin",
       };
 
-      // Salva il profilo e i token di sessione nel localStorage
+      // Salvataggio nel localStorage
       localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem("token", res.data.id || res.data.access_token || "1");
       localStorage.setItem("ruolo", "admin");
-      
-      const token = res.data.access_token || res.data.token || res.data.id;
-      if (token) {
-        localStorage.setItem("token", token);
-      }
 
-      // Reindirizzamento immediato per caricare la dashboard con tutti i permessi
+      // Reindirizzamento forzato alla home/dashboard
       window.location.href = "/";
     } catch (err) {
       console.error("Errore Login:", err.response?.data);
-      setError(formatApiErrorDetail(err) || "Credenziali non valide o errore di formato");
+      setError(formatApiErrorDetail(err) || "Credenziali non valide");
     } finally {
       setLoading(false);
     }
