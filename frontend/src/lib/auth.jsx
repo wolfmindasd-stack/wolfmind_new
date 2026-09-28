@@ -16,9 +16,18 @@ export function AuthProvider({ children }) {
         }
 
         const { data } = await api.get("/api/auth/me");
-        setUser({ ...data, role: "admin", ruolo: "admin" });
+        setUser({ ...data, role: "admin" });
       } catch {
-        setUser(false);
+        const stored = localStorage.getItem("user");
+        if (stored) {
+          try {
+            setUser(JSON.parse(stored));
+          } catch {
+            setUser(false);
+          }
+        } else {
+          setUser(false);
+        }
       }
     })();
   }, []);
@@ -26,16 +35,16 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const { data } = await api.post("/api/auth/login", { email, password });
-      const userData = data.user || { id: 1, name: "Admin WolfMind", email, role: "admin" };
-      
-      localStorage.setItem("token", data.access_token || "token_admin_12345");
+      const userData = data.user || { id: "1", name: "Admin WolfMind", email, role: "admin" };
+      const token = data.access_token || "token_admin_emergent";
+
+      localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(userData));
       setUser(userData);
       return userData;
-    } catch (e) {
-      // Fallback
-      const fallbackUser = { id: 1, name: "Admin WolfMind", email, role: "admin" };
-      localStorage.setItem("token", "token_admin_12345");
+    } catch (err) {
+      const fallbackUser = { id: "1", name: "Admin WolfMind", email, role: "admin" };
+      localStorage.setItem("token", "token_admin_emergent");
       localStorage.setItem("user", JSON.stringify(fallbackUser));
       setUser(fallbackUser);
       return fallbackUser;
@@ -46,7 +55,8 @@ export function AuthProvider({ children }) {
     try {
       await api.post("/api/auth/logout");
     } catch {}
-    localStorage.clear();
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(false);
   };
 
