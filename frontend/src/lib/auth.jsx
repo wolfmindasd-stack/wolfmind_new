@@ -1,3 +1,4 @@
+// frontend/src/lib/auth.jsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { api } from "./api";
 
@@ -15,8 +16,8 @@ export function AuthProvider({ children }) {
           return;
         }
 
-        const { data } = await api.get("/auth/me");
-        setUser({ ...data, role: "admin", ruolo: "admin" });
+        const { data } = await api.get("/api/auth/me");
+        setUser(data);
       } catch {
         setUser(false);
       }
@@ -24,28 +25,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    const { data } = await api.post("/auth/login", { email, password });
-
-    const adminUser = {
-      ...(data.user || data),
-      role: "admin",
-      ruolo: "admin",
-    };
-
-    localStorage.setItem("token", data.access_token || "1");
-    localStorage.setItem("user", JSON.stringify(adminUser));
-    setUser(adminUser);
-
-    return adminUser;
+    const { data } = await api.post("/api/auth/login", { email, password });
+    localStorage.setItem("token", data.access_token);
+    setUser(data.user);
+    return data.user;
   };
 
   const logout = async () => {
     try {
-      await api.post("/auth/logout");
+      await api.post("/api/auth/logout");
     } catch {}
-
     localStorage.removeItem("token");
-    localStorage.removeItem("user");
     setUser(false);
   };
 
