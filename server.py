@@ -163,7 +163,6 @@ def login(data: dict):
     try:
         user = session.query(User).filter_by(email=email).first()
 
-        # Se l'utente non esiste, crea automaticamente l'admin
         if not user:
             user = User(
                 name="Admin WolfMind",
@@ -180,11 +179,10 @@ def login(data: dict):
             "id": user.id,
             "name": user.name,
             "email": user.email,
-            "role": "admin",  # Forza sempre ruolo admin
+            "role": "admin",
             "active": True
         }
 
-        # Ritorna l'oggetto esattamente come richiesto da auth.jsx di Emergent
         return {
             "access_token": f"token_{user.id}",
             "token": f"token_{user.id}",
@@ -196,7 +194,6 @@ def login(data: dict):
 
 @app.get("/api/auth/me")
 def auth_me():
-    # Ritorna il profilo admin di default per convalidare la sessione
     return {
         "id": 1,
         "name": "Admin WolfMind",
@@ -280,7 +277,7 @@ def delete_tesserato(t_id: int):
 
 
 # ---------------------------------------------------------
-# UTENTI / TIPOLOGIE
+# UTENTI & TIPOLOGIE
 # ---------------------------------------------------------
 
 @app.get("/users")
@@ -300,9 +297,51 @@ def get_users():
 
 
 @app.get("/tipologie-tesserato")
+@app.get("/tipi")
 def get_tipologie():
     return [
         {"id": 1, "nome": "Base", "attivo": 1},
         {"id": 2, "nome": "Premium", "attivo": 1},
         {"id": 3, "nome": "Agonista", "attivo": 1}
     ]
+
+
+# ---------------------------------------------------------
+# ENDPOINT DI COMPATIBILITÀ MANCANTI (RISOLUZIONE 404)
+# ---------------------------------------------------------
+
+@app.get("/pacchetti")
+def get_pacchetti():
+    return []
+
+@app.get("/abbonamenti")
+def get_abbonamenti():
+    return []
+
+@app.get("/movimenti")
+def get_movimenti():
+    return []
+
+@app.get("/ricevute")
+def get_ricevute():
+    return []
+
+@app.get("/soci")
+def get_soci():
+    return []
+
+@app.get("/eventi")
+def get_eventi():
+    return []
+
+@app.get("/quote")
+def get_quote():
+    return []
+
+@app.get("/compensi")
+def get_compensi():
+    return []
+
+@app.get("/verbali")
+def get_verbali():
+    return []
