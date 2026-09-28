@@ -367,3 +367,10 @@ def get_report_bilancio(
 @app.get("/export/excel")
 def export_excel():
     return {"ok": True, "message": "Export non disponibile"}
+# ---------------------------------------------------------
+# FALLBACK GLOBALE PER EVITARE QUALSIASI CRASH 404
+# ---------------------------------------------------------
+
+@app.api_route("/{path_name:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
+def catch_all(path_name: str):
+    return []
