@@ -1,14 +1,13 @@
+// frontend/src/lib/api.js
 import axios from "axios";
 
-export const api = axios.create({
-  baseURL: "https://wolfmind-new-backend.onrender.com",
-  withCredentials: true,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+const API_URL =
+  process.env.REACT_APP_API_URL || "https://wolfmind-new.onrender.com";
 
-export const API = api;
+export const api = axios.create({
+  baseURL: API_URL,
+  withCredentials: true,
+});
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
@@ -17,6 +16,8 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+export const API = API_URL; // ✅ aggiunto
 
 export function fmtEur(value) {
   return new Intl.NumberFormat("it-IT", {
