@@ -23,33 +23,12 @@ root.render(
 );
 
 // --- PWA: register service worker & capture install prompt ---
+// --- PWA: Disattiva Service Worker problematici e pulisci la cache ---
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/sw.js")
-      .then((reg) => {
-        // Controlla aggiornamenti ad ogni caricamento
-        reg.update().catch(() => {});
-        // Se c'è un nuovo SW in attesa, ricarica l'app quando si attiva
-        reg.addEventListener("updatefound", () => {
-          const nw = reg.installing;
-          if (!nw) return;
-          nw.addEventListener("statechange", () => {
-            if (nw.state === "installed" && navigator.serviceWorker.controller) {
-              // Nuova versione pronta → prendi controllo e ricarica
-              nw.postMessage({ type: "SKIP_WAITING" });
-            }
-          });
-        });
-      })
-      .catch((err) => console.warn("[PWA] SW registration failed:", err));
-
-    let reloading = false;
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (reloading) return;
-      reloading = true;
-      window.location.reload();
-    });
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (let registration of registrations) {
+      registration.unregister();
+    }
   });
 }
 
