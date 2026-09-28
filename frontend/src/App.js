@@ -27,11 +27,7 @@ function Protected({ children, adminOnly = false }) {
   const { user } = useAuth();
   if (user === null) return <Loader />;
   if (user === false) return <Navigate to="/login" replace />;
-
-  // Supporta sia 'ruolo' (Italiano) che 'role' (Inglese)
-  const currentRole = user.ruolo || user.role || "admin";
-  if (adminOnly && currentRole !== "admin") return <Navigate to="/" replace />;
-
+  if (adminOnly && user.role !== "admin") return <Navigate to="/" replace />;
   return <Layout>{children}</Layout>;
 }
 
