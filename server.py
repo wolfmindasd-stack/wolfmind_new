@@ -345,3 +345,25 @@ def get_compensi():
 @app.get("/verbali")
 def get_verbali():
     return []
+# ---------------------------------------------------------
+# ROTTE REPORT & BILANCIO (RISOLUZIONE 404 REPORT/BILANCIO)
+# ---------------------------------------------------------
+
+@app.get("/report/bilancio")
+def get_report_bilancio(
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None)
+):
+    return {
+        "ok": True,
+        "date_from": date_from,
+        "date_to": date_to,
+        "totale_entrate": 0,
+        "totale_uscite": 0,
+        "saldo": 0,
+        "dettaglio": []
+    }
+
+@app.get("/export/excel")
+def export_excel():
+    return {"ok": True, "message": "Export non disponibile"}
