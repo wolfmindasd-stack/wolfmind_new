@@ -20,7 +20,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email, password);
-      // Sincronizza il localStorage e carica la Dashboard con permessi Admin
+      // Forza il ricaricamento sulla home sbloccando la sessione Admin
       window.location.href = "/";
     } catch (e) {
       setErr(formatApiErrorDetail(e.response?.data?.detail) || e.message);
