@@ -162,86 +162,51 @@ def root():
 # AUTH SENZA JWT
 # ---------------------------------------------------------
 
+# ---------------------------------------------------------
+# AUTH COMPATIBILE VECCHIO PROJECT
+# ---------------------------------------------------------
+
+@app.post("/auth/login")
 @app.post("/api/auth/login")
 def login(data: dict):
     email = data.get("email") or data.get("username")
     password = data.get("password")
 
-    if not email:
-        raise HTTPException(status_code=400, detail="Email mancante")
+    admin_data = {
+        "id": 1,
+        "nome": "Admin WolfMind",
+        "email": email or "admin@wolfmind.com",
+        "telefono": "3331234567",
+        "role": "admin",
+        "ruolo": "admin",
+        "avatar_url": ""
+    }
 
-    session = db()
-    try:
-        user = session.query(Profilo).filter_by(email=email).first()
-
-        if not user:
-            user = Profilo(
-                nome="Admin WolfMind",
-                email="admin@wolfmind.com",
-                password="WolfMind2026!",
-                telefono="3331234567",
-                ruolo="admin",
-                avatar_url=""
-            )
-            session.add(user)
-            session.commit()
-            session.refresh(user)
-
-        return {
-            "id": user.id,
-            "token": str(user.id),
-            "access_token": str(user.id),
-            "nome": user.nome,
-            "email": user.email,
-            "telefono": user.telefono,
-            "ruolo": "admin",
-            "avatar_url": user.avatar_url
-        }
-    finally:
-        session.close()
+    return {
+        "user": admin_data,
+        "access_token": "1",
+        "token": "1"
+    }
 
 
+@app.get("/auth/me")
 @app.get("/api/auth/me")
 def auth_me(
     id: Optional[str] = Query(None), 
     authorization: Optional[str] = Header(None)
 ):
-    user_id = None
-
-    if id and str(id).isdigit():
-        user_id = int(id)
-
-    if not user_id and authorization:
-        try:
-            token_str = authorization.replace("Bearer ", "").strip()
-            if token_str.isdigit():
-                user_id = int(token_str)
-        except Exception:
-            pass
-
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Sessione non valida o ID mancante")
-
-    session = db()
-    try:
-        p = session.query(Profilo).filter_by(id=user_id).first()
-
-        if not p:
-            raise HTTPException(status_code=404, detail="Profilo non trovato")
-
-        return {
-            "id": p.id,
-            "token": str(p.id),
-            "nome": p.nome,
-            "email": p.email,
-            "telefono": p.telefono,
-            "ruolo": "admin",
-            "avatar_url": p.avatar_url
-        }
-    finally:
-        session.close()
+    return {
+        "id": 1,
+        "nome": "Admin WolfMind",
+        "email": "admin@wolfmind.com",
+        "telefono": "3331234567",
+        "role": "admin",
+        "ruolo": "admin",
+        "avatar_url": ""
+    }
 
 
+@app.post("/auth/logout")
 @app.post("/api/auth/logout")
 def logout():
     return {"ok": True}
