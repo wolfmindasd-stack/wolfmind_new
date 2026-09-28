@@ -1,8 +1,11 @@
 // frontend/src/lib/api.js
 import axios from "axios";
 
+// L'URL corretto del backend su Render
 const API_URL =
-  process.env.REACT_APP_API_URL || "https://wolfmind-new.onrender.com";
+  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL) ||
+  (typeof process !== "undefined" && process.env && process.env.REACT_APP_API_URL) ||
+  "https://wolfmind-new-backend.onrender.com";
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -17,7 +20,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-export const API = API_URL; // ✅ aggiunto
+export const API = API_URL;
 
 export function fmtEur(value) {
   return new Intl.NumberFormat("it-IT", {
