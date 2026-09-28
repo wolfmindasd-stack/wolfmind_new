@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
         }
 
         const { data } = await api.get("/api/auth/me");
-        setUser({ ...data, role: "admin" });
+        setUser({ ...data, role: "admin", ruolo: "admin" });
       } catch {
         setUser(false);
       }
@@ -26,15 +26,14 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const { data } = await api.post("/api/auth/login", { email, password });
-      const u = data.user || { id: 1, name: "Admin WolfMind", email, role: "admin" };
-      const tok = data.access_token || "token_admin_12345";
-
-      localStorage.setItem("token", tok);
-      localStorage.setItem("user", JSON.stringify(u));
-      setUser(u);
-      return u;
+      const userData = data.user || { id: 1, name: "Admin WolfMind", email, role: "admin" };
+      
+      localStorage.setItem("token", data.access_token || "token_admin_12345");
+      localStorage.setItem("user", JSON.stringify(userData));
+      setUser(userData);
+      return userData;
     } catch (e) {
-      // Fallback locale in caso di problemi di rete
+      // Fallback
       const fallbackUser = { id: 1, name: "Admin WolfMind", email, role: "admin" };
       localStorage.setItem("token", "token_admin_12345");
       localStorage.setItem("user", JSON.stringify(fallbackUser));
