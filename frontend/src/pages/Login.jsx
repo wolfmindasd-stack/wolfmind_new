@@ -22,18 +22,24 @@ export default function Login() {
         password: form.password,
       };
 
-      const res = await api.post("/api/auth/login", payload);
+     const res = await api.post("/api/auth/login", payload);
 
-      // Salva il profilo e i token di sessione
-      localStorage.setItem("user", JSON.stringify(res.data));
-      if (res.data.access_token) {
-        localStorage.setItem("token", res.data.access_token);
-      }
-      if (res.data.ruolo) {
-        localStorage.setItem("ruolo", res.data.ruolo);
+      // Crea l'oggetto utente garantendo il ruolo admin
+      const userData = {
+        ...res.data,
+        ruolo: "admin", // Forziamo il ruolo admin
+      };
+
+      // Salva il profilo e i token di sessione nel localStorage
+      localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem("ruolo", "admin");
+      
+      const token = res.data.access_token || res.data.token || res.data.id;
+      if (token) {
+        localStorage.setItem("token", token);
       }
 
-      // Reindirizzamento forzato per sincronizzare lo stato di autenticazione dell'app
+      // Reindirizzamento immediato per caricare la dashboard con tutti i permessi
       window.location.href = "/";
     } catch (err) {
       console.error("Errore Login:", err.response?.data);
