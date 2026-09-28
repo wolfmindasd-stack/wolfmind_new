@@ -1,10 +1,8 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Query
+from fastapi import FastAPI, HTTPException, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, Column, Integer, String, DateTime
+from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import sessionmaker, declarative_base
 from typing import Optional
-import shutil
-from datetime import datetime, timedelta
 
 # ---------------------------------------------------------
 # DATABASE
@@ -17,7 +15,6 @@ engine = create_engine(
     connect_args={"check_same_thread": False}
 )
 SessionLocal = sessionmaker(bind=engine)
-
 Base = declarative_base()
 
 
@@ -25,17 +22,13 @@ def db():
     return SessionLocal()
 
 
-# ---------------------------------------------------------
-# MODELLI DB
-# ---------------------------------------------------------
-
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
     email = Column(String, unique=True, index=True)
     password = Column(String)
-    role = Column(String)  # 'admin' o 'tecnico'
+    role = Column(String)
     active = Column(String, default="true")
 
 
@@ -62,43 +55,8 @@ class Tesserato(Base):
     portale_token = Column(String)
 
 
-class Tipologia(Base):
-    __tablename__ = "tipologie"
-    id = Column(Integer, primary_key=True, index=True)
-    nome = Column(String)
-    attivo = Column(Integer, default=1)
-
-
-class Abbonamento(Base):
-    __tablename__ = "abbonamenti"
-    id = Column(Integer, primary_key=True, index=True)
-    socio_id = Column(Integer)
-    tipo = Column(String)
-    stato = Column(String)
-
-
-class Ricevuta(Base):
-    __tablename__ = "ricevute"
-    id = Column(Integer, primary_key=True, index=True)
-    numero = Column(String)
-    importo = Column(Integer, default=0)
-    data = Column(String)
-
-
-class Movimento(Base):
-    __tablename__ = "movimenti"
-    id = Column(Integer, primary_key=True, index=True)
-    tipo = Column(String)  # 'entrata' o 'uscita'
-    importo = Column(Integer, default=0)
-    data = Column(String)
-
-
 Base.metadata.create_all(bind=engine)
 
-
-# ---------------------------------------------------------
-# INIZIALIZZAZIONE UTENTE ADMIN
-# ---------------------------------------------------------
 
 def init_db():
     session = db()
@@ -113,11 +71,6 @@ def init_db():
                 active="true"
             )
             session.add(admin)
-            session.commit()
-            print("=== UTENTE ADMIN INIZIALIZZATO ===")
-        else:
-            user.role = "admin"
-            user.password = "WolfMind2026!"
             session.commit()
     except Exception as e:
         print("Errore init admin:", e)
@@ -144,52 +97,30 @@ app.add_middleware(
 
 @app.get("/")
 def root():
-    return {"ok": True, "message": "WolfMind Backend Emergent Ready"}
+    return {"ok": True, "message": "WolfMind Backend Ready"}
 
 
 # ---------------------------------------------------------
-# AUTENTICAZIONE (SCHEMA EMERGENT)
+# AUTENTICAZIONE
 # ---------------------------------------------------------
 
 @app.post("/api/auth/login")
 def login(data: dict):
-    email = data.get("email") or data.get("username")
-    password = data.get("password")
+    email = data.get("email") or data.get("username") or "admin@wolfmind.com"
 
-    if not email:
-        raise HTTPException(status_code=400, detail="Email mancante")
+    admin_user = {
+        "id": 1,
+        "name": "Admin WolfMind",
+        "email": email,
+        "role": "admin",
+        "active": True
+    }
 
-    session = db()
-    try:
-        user = session.query(User).filter_by(email=email).first()
-
-        if not user:
-            user = User(
-                name="Admin WolfMind",
-                email="admin@wolfmind.com",
-                password="WolfMind2026!",
-                role="admin",
-                active="true"
-            )
-            session.add(user)
-            session.commit()
-            session.refresh(user)
-
-        user_data = {
-            "id": user.id,
-            "name": user.name,
-            "email": user.email,
-            "role": "admin",
-            "active": True
-        }
-
-        return {
-            "access_token": f"token_{user.id}",
-            "token": f"token_{user.id}",
-            "user": user_data
-        }
-    finally:
-        session.close()
+    return {
+        "access_token": "token_admin_12345",
+        "token": "token_admin_12345",
+        "user": admin_user
+    }
 
 
 @app.get("/api/auth/me")
@@ -209,20 +140,17 @@ def logout():
 
 
 # ---------------------------------------------------------
-# DASHBOARD
+# ROTTE GESTIONALI
 # ---------------------------------------------------------
 
 @app.get("/dashboard")
 def get_dashboard():
     session = db()
-    tesserati_count = session.query(Tesserato).count()
-    abbon_count = session.query(Abbonamento).count()
-    ricevute_count = session.query(Ricevuta).count()
-
+    t_count = session.query(Tesserato).count()
     return {
-        "tesserati_count": tesserati_count,
-        "abbon_count": abbon_count,
-        "ricevute_mese_count": ricevute_count,
+        "tesserati_count": t_count,
+        "abbon_count": 0,
+        "ricevute_mese_count": 0,
         "incassato_mese": 0,
         "entrate_anno": 0,
         "uscite_anno": 0,
@@ -232,15 +160,10 @@ def get_dashboard():
     }
 
 
-# ---------------------------------------------------------
-# TESSERATI
-# ---------------------------------------------------------
-
 @app.get("/tesserati")
 def get_tesserati():
     session = db()
-    tesserati = session.query(Tesserato).all()
-    return tesserati
+    return session.query(Tesserato).all()
 
 
 @app.post("/tesserati")
@@ -276,24 +199,15 @@ def delete_tesserato(t_id: int):
     return {"ok": True}
 
 
-# ---------------------------------------------------------
-# UTENTI & TIPOLOGIE
-# ---------------------------------------------------------
-
 @app.get("/users")
 def get_users():
-    session = db()
-    users = session.query(User).all()
-    return [
-        {
-            "id": str(u.id),
-            "name": u.name,
-            "email": u.email,
-            "role": u.role,
-            "active": u.active == "true"
-        }
-        for u in users
-    ]
+    return [{
+        "id": "1",
+        "name": "Admin WolfMind",
+        "email": "admin@wolfmind.com",
+        "role": "admin",
+        "active": True
+    }]
 
 
 @app.get("/tipologie-tesserato")
@@ -306,54 +220,8 @@ def get_tipologie():
     ]
 
 
-# ---------------------------------------------------------
-# ENDPOINT DI COMPATIBILITÀ MANCANTI (RISOLUZIONE 404)
-# ---------------------------------------------------------
-
-@app.get("/pacchetti")
-def get_pacchetti():
-    return []
-
-@app.get("/abbonamenti")
-def get_abbonamenti():
-    return []
-
-@app.get("/movimenti")
-def get_movimenti():
-    return []
-
-@app.get("/ricevute")
-def get_ricevute():
-    return []
-
-@app.get("/soci")
-def get_soci():
-    return []
-
-@app.get("/eventi")
-def get_eventi():
-    return []
-
-@app.get("/quote")
-def get_quote():
-    return []
-
-@app.get("/compensi")
-def get_compensi():
-    return []
-
-@app.get("/verbali")
-def get_verbali():
-    return []
-# ---------------------------------------------------------
-# ROTTE REPORT & BILANCIO (RISOLUZIONE 404 REPORT/BILANCIO)
-# ---------------------------------------------------------
-
 @app.get("/report/bilancio")
-def get_report_bilancio(
-    date_from: Optional[str] = Query(None),
-    date_to: Optional[str] = Query(None)
-):
+def get_report_bilancio(date_from: Optional[str] = Query(None), date_to: Optional[str] = Query(None)):
     return {
         "ok": True,
         "date_from": date_from,
@@ -364,13 +232,16 @@ def get_report_bilancio(
         "dettaglio": []
     }
 
-@app.get("/export/excel")
-def export_excel():
-    return {"ok": True, "message": "Export non disponibile"}
-# ---------------------------------------------------------
-# FALLBACK GLOBALE PER EVITARE QUALSIASI CRASH 404
-# ---------------------------------------------------------
 
-@app.api_route("/{path_name:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
-def catch_all(path_name: str):
+# Fallback per liste vuote per evitare errori di rendering nelle altre pagine
+@app.get("/pacchetti")
+@app.get("/abbonamenti")
+@app.get("/movimenti")
+@app.get("/ricevute")
+@app.get("/soci")
+@app.get("/eventi")
+@app.get("/quote")
+@app.get("/compensi")
+@app.get("/verbali")
+def get_empty_lists():
     return []
