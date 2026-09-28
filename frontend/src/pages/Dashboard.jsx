@@ -1,113 +1,106 @@
 import React, { useEffect, useState } from "react";
-import { api } from "../lib/api";
+import { api, fmtEur, fmtDate } from "../lib/api";
+import { TrendingUp, TrendingDown, Users, Receipt, AlertTriangle, Wallet, Package } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../lib/auth";
+
+const KpiCard = ({ title, value, icon: Icon, hint, color = "text-white", testid }) => (
+  <div className="wm-card p-6" data-testid={testid}>
+    <div className="flex items-start justify-between">
+      <div className="wm-label">{title}</div>
+      <Icon size={18} className="text-white/40" strokeWidth={1.5} />
+    </div>
+    <div className={`mt-4 font-display text-3xl font-bold tracking-tight ${color}`}>{value}</div>
+    {hint && <div className="mt-1 text-xs text-white/40">{hint}</div>}
+  </div>
+);
 
 export default function Dashboard() {
-  // Recupera l'utente salvato dal login
-  const saved = localStorage.getItem("user");
-  const user = saved ? JSON.parse(saved) : null;
-
-  const [scadenze, setScadenze] = useState([]);
-  const [caricamento, setCaricamento] = useState(true);
-
+  const { user } = useAuth();
+  const [d, setD] = useState(null);
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await api.get("/dashboard");
-        setScadenze(res.data.scadenze_imminenti || []);
-      } catch (err) {
-        console.error("Errore nel caricamento dashboard:", err);
-      }
-      setCaricamento(false);
-    };
-
-    fetchData();
+    api.get("/dashboard").then((r) => setD(r.data)).catch(() => {});
   }, []);
 
-  if (!user) {
-    return (
-      <div className="p-6 text-center text-xl">
-        Caricamento dati utente...
-      </div>
-    );
-  }
+  if (!d) return <div className="text-white/50">Caricamento…</div>;
+  const isTecnico = user?.role === "tecnico";
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-3xl font-bold">
-        Benvenuto {user.nome}
-      </h1>
-
-      <div className="text-lg">
-        Ruolo: <strong>{user.ruolo}</strong>
+    <div className="space-y-8" data-testid="dashboard-page">
+      <div>
+        <div className="wm-label">Dashboard {isTecnico && "· Tecnico"}</div>
+        <h1 className="font-display text-3xl sm:text-4xl font-black tracking-tighter mt-2">Panoramica</h1>
+        <p className="text-white/50 mt-2 text-sm">
+          {isTecnico ? "I tuoi dati: tesserati, ricevute, movimenti e compenso maturato." :
+                       "Le metriche chiave del gestionale in tempo reale."}
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Link
-          to="/calendario"
-          className="p-6 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition"
-        >
-          <h2 className="text-xl font-bold">Calendario Lezioni</h2>
-          <p>Crea le tue lezioni. Ricorrenza settimanale disponibile.</p>
-        </Link>
-
-        <Link
-          to="/compensi"
-          className="p-6 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition"
-        >
-          <h2 className="text-xl font-bold">Compensi</h2>
-          <p>Gestione compensi e ricevute.</p>
-        </Link>
-
-        <Link
-          to="/movimenti"
-          className="p-6 bg-purple-600 text-white rounded-lg shadow hover:bg-purple-700 transition"
-        >
-          <h2 className="text-xl font-bold">Movimenti</h2>
-          <p>Rendicontazione economica.</p>
-        </Link>
-
-        <Link
-          to="/libro-soci"
-          className="p-6 bg-orange-600 text-white rounded-lg shadow hover:bg-orange-700 transition"
-        >
-          <h2 className="text-xl font-bold">Libro Soci</h2>
-          <p>Gestione iscritti e storico.</p>
-        </Link>
-
-        <Link
-          to="/abbonamenti"
-          className="p-6 bg-red-600 text-white rounded-lg shadow hover:bg-red-700 transition"
-        >
-          <h2 className="text-xl font-bold">Abbonamenti</h2>
-          <p>Gestione piani e scadenze.</p>
-        </Link>
-
-        <Link
-          to="/profilo"
-          className="p-6 bg-gray-700 text-white rounded-lg shadow hover:bg-gray-800 transition"
-        >
-          <h2 className="text-xl font-bold">Profilo</h2>
-          <p>Modifica dati personali.</p>
-        </Link>
-      </div>
-
-      <div className="mt-10">
-        <h2 className="text-2xl font-bold mb-4">Scadenze Imminenti</h2>
-
-        {caricamento ? (
-          <div>Caricamento...</div>
-        ) : scadenze.length === 0 ? (
-          <div>Nessuna scadenza imminente.</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard title={isTecnico ? "Tuoi tesserati" : "Tesserati totali"}
+          value={d.tesserati_count} icon={Users} testid="kpi-tesserati" />
+        <KpiCard title={isTecnico ? "Tuoi abbonamenti" : "Abbonamenti"}
+          value={d.abbon_count} icon={Package} testid="kpi-abbonamenti" />
+        <KpiCard title="Ricevute del mese" value={d.ricevute_mese_count} icon={Receipt}
+          hint={fmtEur(d.incassato_mese) + " incassati"} testid="kpi-ricevute-mese" />
+        {isTecnico ? (
+          <KpiCard title="Compenso maturato" value={fmtEur(d.compenso_maturato || 0)}
+            icon={Wallet} color="text-[#FFCC00]" testid="kpi-compenso" hint="Anno in corso" />
         ) : (
-          <ul className="space-y-2">
-            {scadenze.map((s, i) => (
-              <li key={i} className="p-4 bg-white rounded shadow">
-                <strong>{s.nome}</strong> — {s.data}
-              </li>
-            ))}
-          </ul>
+          <KpiCard title="Entrate (anno)" value={fmtEur(d.entrate_anno)} icon={TrendingUp}
+            color="text-[#34C759]" testid="kpi-entrate" />
         )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="wm-card p-6 lg:col-span-1">
+          <div className="wm-label mb-4">{isTecnico ? "Il tuo saldo movimenti" : "Saldo anno"}</div>
+          <div className={`font-display text-4xl sm:text-5xl font-black tracking-tighter
+              ${d.saldo_anno >= 0 ? "text-[#34C759]" : "text-[#FF3B30]"}`}
+              data-testid="kpi-saldo">{fmtEur(d.saldo_anno)}</div>
+          <div className="mt-4 text-sm text-white/50">
+            {isTecnico ? "Entrate meno uscite attribuite a te (anno in corso)." :
+                          "Differenza tra entrate e uscite dall'inizio dell'anno."}
+          </div>
+          {!isTecnico && (
+            <div className="mt-4 pt-4 border-t border-white/10 space-y-1">
+              <div className="flex justify-between text-sm"><span className="text-white/50">Entrate</span>
+                <span className="text-[#34C759] font-semibold">{fmtEur(d.entrate_anno)}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-white/50">Uscite</span>
+                <span className="text-[#FF3B30] font-semibold">{fmtEur(d.uscite_anno)}</span></div>
+            </div>
+          )}
+        </div>
+
+        <div className="wm-card p-6 lg:col-span-2" data-testid="scadenze-panel">
+          <div className="flex items-center justify-between mb-4">
+            <div className="wm-label flex items-center gap-2">
+              <AlertTriangle size={14} className="text-[#FF3B30]" />
+              Scadenze imminenti (30 gg)
+            </div>
+            <Link to="/tesserati" className="text-xs text-[#007AFF] hover:underline">
+              Vai ai tesserati →
+            </Link>
+          </div>
+         {d?.scadenze_imminenti?.length === 0 && (
+            <div className="text-white/50 text-sm py-4">Nessuna scadenza nei prossimi 30 giorni.</div>
+          )}
+          <div className="space-y-2">
+            {d?.scadenze_imminenti?.slice(0, 6)?.map((t) => (
+              <div key={t.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                <div>
+                  <div className="font-medium">{t.cognome} {t.nome}</div>
+                  <div className="text-xs text-white/50">
+                    {t.scadenza_tesseramento && `Tesseramento: ${fmtDate(t.scadenza_tesseramento)}`}
+                    {t.scadenza_tesseramento && t.scadenza_visita_medica && " · "}
+                    {t.scadenza_visita_medica && `Visita: ${fmtDate(t.scadenza_visita_medica)}`}
+                  </div>
+                </div>
+                <Link to={`/tesserati`} className="text-xs text-[#007AFF] hover:underline">Apri</Link>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
